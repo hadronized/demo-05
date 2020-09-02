@@ -1,4 +1,10 @@
 [workspace]
 members = [
-  "runtime"
+  "audio",
+  "entity",
+  "graphics",
+  "proto",
+  "runtime",
+  "synchronizer",
+  "system",
 ]
