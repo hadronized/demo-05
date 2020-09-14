@@ -3,9 +3,10 @@
 //! This system is responsible in loading, streaming and watching assets, also known as _entities_. Entities are
 //! independent objects identified by a unique identifier.
 
-#![feature(bool_to_option)]
+pub mod mesh;
 
-mod mesh;
+use std::path::PathBuf;
+use system::resource::ResourceManager;
 
 use crate::mesh::Mesh;
 
@@ -14,4 +15,11 @@ use crate::mesh::Mesh;
 pub enum Entity {
   /// A [`Mesh`].
   Mesh(Mesh),
+}
+
+/// The [`Entity`] system.
+struct EntitySystem {
+  /// Directory where all scarce resource this entity system knows about live in.
+  root_dir: PathBuf,
+  resources: ResourceManager<Entity>,
 }

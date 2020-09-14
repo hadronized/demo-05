@@ -106,7 +106,11 @@ impl Mesh {
     Self::traverse_geometry(object.vertices, object.normals, geometry)
   }
 
-  fn traverse_geometry(obj_vertices: Vec<obj::Vertex>, obj_normals: Vec<obj::Normal>, geometry: obj::Geometry) -> Result<Self, MeshLoadingError> {
+  fn traverse_geometry(
+    obj_vertices: Vec<obj::Vertex>,
+    obj_normals: Vec<obj::Normal>,
+    geometry: obj::Geometry,
+  ) -> Result<Self, MeshLoadingError> {
     // build up vertices; for this to work, we remove duplicated vertices by putting them in a
     // map associating the vertex with its ID
     let mut vertex_cache: HashMap<obj::VTNIndex, MeshIndex> = HashMap::new();

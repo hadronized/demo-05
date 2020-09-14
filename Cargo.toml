@@ -8,3 +8,12 @@ members = [
   "synchronizer",
   "system",
 ]
+
+[patch.crates-io]
+audio = { path = "audio" }
+entity = { path = "entity" }
+graphics = { path = "graphics" }
+proto = { path = "proto" }
+runtime = { path = "runtime" }
+synchronizer = { path = "synchronizer" }
+system = { path = "system" }

@@ -14,3 +14,4 @@ edition = "2018"
 [dependencies]
 log = "0.4.11"
 env_logger = "0.7.1"
+entity = "0.1"
