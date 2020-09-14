@@ -84,14 +84,14 @@ impl Mesh {
 
   fn traverse_obj_set(obj_set: obj::ObjSet) -> Result<Self, MeshLoadingError> {
     let objects = obj_set.objects;
-    (objects.len() == 1)
-      .then_some(())
-      .ok_or_else(|| MeshLoadingError::too_many_objects(objects.len()))?;
+    if objects.len() != 1 {
+      return Err(MeshLoadingError::too_many_objects(objects.len()));
+    }
 
     let object = objects.into_iter().next().unwrap();
-    (object.geometry.len() == 1)
-      .then_some(())
-      .ok_or_else(|| MeshLoadingError::too_many_geometries(object.geometry.len()))?;
+    if object.geometry.len() != 1 {
+      return Err(MeshLoadingError::too_many_geometries(object.geometry.len()));
+    }
 
     Self::traverse_object(object)
   }

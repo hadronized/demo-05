@@ -5,7 +5,7 @@
 
 pub mod mesh;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use system::resource::ResourceManager;
 
 use crate::mesh::Mesh;
@@ -22,4 +22,14 @@ struct EntitySystem {
   /// Directory where all scarce resource this entity system knows about live in.
   root_dir: PathBuf,
   resources: ResourceManager<Entity>,
+}
+
+impl EntitySystem {
+  /// Create a new [`EntitySystem`].
+  pub fn new(root_dir: impl AsRef<Path>) -> Self {
+    Self {
+      root_dir: root_dir.as_ref().to_owned(),
+      resources: ResourceManager::new(),
+    }
+  }
 }
