@@ -18,8 +18,8 @@ pub enum Entity {
 }
 
 /// The [`Entity`] system.
-struct EntitySystem {
-  /// Directory where all scarce resource this entity system knows about live in.
+pub struct EntitySystem {
+  /// Directory where all scarce resources this entity system knows about live in.
   root_dir: PathBuf,
   resources: ResourceManager<Entity>,
 }
