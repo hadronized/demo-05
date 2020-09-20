@@ -55,6 +55,7 @@ impl<T> std::hash::Hash for Handle<T> {
 }
 
 /// A stateful handle manager, distributing handle.
+#[derive(Debug)]
 pub struct ResourceManager<T> {
   next_handle: Handle<T>,
   resources: HashMap<Handle<T>, T>,
