@@ -16,6 +16,8 @@ pub struct Handle<T> {
   _phantom: PhantomData<*const T>,
 }
 
+unsafe impl<T> Send for Handle<T> {}
+
 impl<T> Handle<T> {
   fn copy(&self) -> Self {
     Handle {

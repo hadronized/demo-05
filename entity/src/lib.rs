@@ -58,7 +58,7 @@ impl EntitySystem {
   }
 
   fn traverse_directory(&mut self, path: &Path) {
-    log::info!("traversing {}", path.display());
+    log::debug!("traversing {}", path.display());
 
     for dir_entry in read_dir(path).unwrap() {
       let file = dir_entry.unwrap();
@@ -85,7 +85,7 @@ impl System<EntityMsg> for EntitySystem {
 
     // move into a thread for greater good
     let _ = thread::spawn(move || {
-      self.startup();
+      self.start();
     });
 
     addr
