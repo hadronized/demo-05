@@ -24,6 +24,11 @@ pub trait System<M> {
     addr.sender.send(msg).map_err(|_| SystemError::CannotSend)
   }
 
+  /// Send a message to myself.
+  fn send_msg_self(&self, msg: M) -> Result<(), SystemError> {
+    self.send_msg(self.system_addr(), msg)
+  }
+
   /// Run the system and return its [`Addr`] so that other systems can use it.
   fn startup(self) -> Addr<M>;
 }
@@ -61,6 +66,13 @@ impl fmt::Display for SystemError {
 #[derive(Debug)]
 pub struct MsgQueue<T> {
   receiver: mpsc::Receiver<T>,
+}
+
+impl<T> MsgQueue<T> {
+  /// Wait until a message gets available.
+  pub fn recv(&self) -> Option<T> {
+    self.receiver.recv().ok()
+  }
 }
 
 /// Default implementation of a system initialization procedure.

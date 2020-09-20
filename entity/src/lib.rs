@@ -5,6 +5,8 @@
 
 pub mod mesh;
 
+use colored::Colorize as _;
+use std::ffi::OsStr;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 use std::thread;
@@ -21,7 +23,10 @@ pub enum Entity {
 }
 
 #[derive(Debug)]
-pub enum EntityMsg {}
+pub enum EntityMsg {
+  /// Kill message.
+  Kill,
+}
 
 /// The [`Entity`] system.
 #[derive(Debug)]
@@ -55,10 +60,25 @@ impl EntitySystem {
   pub fn start(mut self) {
     let root_dir = self.root_dir.clone(); // TODO: check how we can remove the clone
     self.traverse_directory(&root_dir);
+
+    // main loop
+    loop {
+      match self.msg_queue.recv() {
+        Some(EntityMsg::Kill) | None => {
+          log::info!("exiting system…");
+          break;
+        }
+
+        _ => (),
+      }
+    }
   }
 
   fn traverse_directory(&mut self, path: &Path) {
-    log::debug!("traversing {}", path.display());
+    log::debug!(
+      "traversing {}",
+      path.display().to_string().purple().italic(),
+    );
 
     for dir_entry in read_dir(path).unwrap() {
       let file = dir_entry.unwrap();
@@ -69,7 +89,58 @@ impl EntitySystem {
         self.traverse_directory(&path);
       } else if path.is_file() {
         // invoke a handler for this file
-        log::info!("found resource file {}", path.display());
+        log::info!(
+          "found resource file {}",
+          path.display().to_string().purple().italic(),
+        );
+
+        // extract the extension
+        match path.extension().and_then(OsStr::to_str) {
+          Some(ext) => {
+            self.extension_based_dispatch(ext, &path);
+          }
+
+          None => {
+            log::warn!(
+              "resource {} doesn’t have a path extension; ignoring",
+              path.display().to_string().purple().italic(),
+            );
+          }
+        }
+      }
+    }
+  }
+
+  /// Dispatch entity loading based on the extension of a file.
+  fn extension_based_dispatch(&mut self, ext: &str, path: &Path) {
+    match ext {
+      "obj" => self.load_obj(path),
+      _ => log::warn!(
+        "unknown extension {} for path {}",
+        ext.blue().italic(),
+        path.display().to_string().purple().italic(),
+      ),
+    }
+  }
+
+  /// Load .obj files.
+  fn load_obj(&mut self, path: &Path) {
+    match Mesh::load_from_path(path) {
+      Ok(mesh) => {
+        let path_name = path.display().to_string();
+        let path = path_name.purple().italic();
+        log::info!("{} {}", "loaded".green().bold(), path);
+
+        let h = self.resources.wrap(Entity::Mesh(mesh), path_name);
+        log::debug!("assigned {} handle {}", path, h.to_string().green().bold());
+      }
+
+      Err(err) => {
+        log::error!(
+          "cannot load OBJ {}: {}",
+          path.display().to_string().purple().italic(),
+          err,
+        );
       }
     }
   }

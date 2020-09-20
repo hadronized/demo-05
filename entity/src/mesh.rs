@@ -67,8 +67,7 @@ impl Mesh {
     }
   }
 
-  // TODO: split that function into smaller parts.
-  fn load_from_path(path: &Path) -> Result<Self, MeshLoadingError> {
+  pub fn load_from_path(path: &Path) -> Result<Self, MeshLoadingError> {
     Self::validate_path(path)?;
 
     // read the content of the path at once (no streaming)
@@ -152,7 +151,8 @@ impl Mesh {
 
 /// Possible errors that can happen while loading a [`Mesh`].
 #[derive(Debug)]
-enum MeshLoadingError {
+#[non_exhaustive]
+pub enum MeshLoadingError {
   /// Incorrect path (doesn’t exist / not enough permission to read from it / etc.).
   CannotReadPath {
     path: PathBuf,
