@@ -1,8 +1,7 @@
 use colored::Colorize;
 use entity::{EntityMsg, EntitySystem};
-use log::debug;
 use proto::RuntimeMsg;
-use std::{collections::HashSet, path::Path};
+use std::collections::HashSet;
 use structopt::StructOpt;
 use system::{system_init, Addr, MsgQueue, System, SystemUID};
 
@@ -41,7 +40,7 @@ impl Runtime {
   }
 }
 
-impl System<RuntimeMsg, ()> for Runtime {
+impl System<RuntimeMsg> for Runtime {
   fn system_addr(&self) -> Addr<RuntimeMsg> {
     self.addr.clone()
   }
@@ -60,7 +59,7 @@ impl System<RuntimeMsg, ()> for Runtime {
 
     // kill everything if we receive SIGINT
     ctrlc::set_handler(move || {
-      entity_system_addr.send_msg(EntityMsg::Kill);
+      entity_system_addr.send_msg(EntityMsg::Kill).unwrap();
     })
     .unwrap();
 
@@ -80,10 +79,6 @@ impl System<RuntimeMsg, ()> for Runtime {
 
     log::info!("all systems cleared; bye…");
   }
-
-  fn publish(&self, _: ()) {}
-
-  fn subscribe(&mut self, _: Addr<()>) {}
 }
 
 pub fn main() {

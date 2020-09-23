@@ -45,18 +45,6 @@ pub struct Mesh {
 }
 
 impl Mesh {
-  fn new(
-    vertices: impl Into<Vec<MeshVertex>>,
-    indices: impl Into<Vec<MeshIndex>>,
-    mode: Mode,
-  ) -> Self {
-    Mesh {
-      vertices: vertices.into(),
-      indices: indices.into(),
-      mode,
-    }
-  }
-
   fn validate_path(path: &Path) -> Result<(), MeshLoadingError> {
     log::info!("loading mesh at {}", path.display());
 
@@ -123,7 +111,7 @@ impl Mesh {
             indices.push(*vertex_index);
           } else {
             let p = obj_vertices[key.0];
-            let n = obj_normals[key.2.ok_or_else(|| MeshLoadingError::MissingVertexNormal)?];
+            let n = obj_normals[key.2.ok_or_else(MeshLoadingError::missing_vertex_normal)?];
             let pos = Pos::new([p.x as f32, p.y as f32, p.z as f32]);
             let nor = Nor::new([n.x as f32, n.y as f32, n.z as f32]);
             let vertex = MeshVertex { pos, nor };
@@ -135,7 +123,7 @@ impl Mesh {
           }
         }
       } else {
-        return Err(MeshLoadingError::UnsupportedPrimitiveMode);
+        return Err(MeshLoadingError::unsupported_primitive_mode());
       }
     }
 

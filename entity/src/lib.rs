@@ -40,7 +40,6 @@ pub struct EntitySystem {
   resources: ResourceManager<Entity>,
   addr: Addr<EntityMsg>,
   msg_queue: MsgQueue<EntityMsg>,
-  subscribers: Vec<Addr<EntityMsg>>,
 }
 
 impl EntitySystem {
@@ -55,7 +54,6 @@ impl EntitySystem {
       resources: ResourceManager::new(),
       addr,
       msg_queue,
-      subscribers: Vec::new(),
     }
   }
 
@@ -165,15 +163,5 @@ impl System<EntityMsg> for EntitySystem {
     let _ = thread::spawn(move || {
       self.start();
     });
-  }
-
-  fn publish(&self, event: EntityMsg) {
-    for addr in &self.subscribers {
-      addr.send_msg(event.clone()).unwrap();
-    }
-  }
-
-  fn subscribe(&mut self, addr: Addr<EntityMsg>) {
-    self.subscribers.push(addr);
   }
 }

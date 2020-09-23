@@ -17,10 +17,7 @@ pub mod resource;
 ///
 /// A _message_ can be anything, but most of the time, systems will expect a protocol to be implemented when sending
 /// messages to efficiently _move_ messages without having to serialize / deserialize them.
-pub trait System<M, E = M>
-where
-  E: Clone,
-{
+pub trait System<M> {
   /// Get the address of this system.
   fn system_addr(&self) -> Addr<M>;
 
@@ -31,15 +28,6 @@ where
 
   /// Run the system and return its [`Addr`] so that other systems can use it.
   fn startup(self);
-
-  /// Emit an event.
-  ///
-  /// The difference between [`System::send_msg`] and [`System::emit_event`] is that the former requires an explicit
-  /// address, while the second will send to all “subscribers”.
-  fn publish(&self, event: E);
-
-  /// Subscribe a system that will receive events.
-  fn subscribe(&mut self, addr: Addr<E>);
 }
 
 /// UID of a system.
@@ -65,8 +53,11 @@ pub struct Addr<T> {
 }
 
 impl<T> Addr<T> {
-  pub fn send_msg(&self, msg: T) -> Result<(), SystemError> {
-    self.sender.send(msg).map_err(|_| SystemError::CannotSend)
+  pub fn send_msg(&self, msg: impl Into<T>) -> Result<(), SystemError> {
+    self
+      .sender
+      .send(msg.into())
+      .map_err(|_| SystemError::CannotSend)
   }
 }
 
