@@ -6,6 +6,8 @@
 use std::fmt;
 use std::sync::mpsc;
 
+use rand::{thread_rng, Rng as _};
+
 pub mod resource;
 
 /// Systems.
@@ -15,28 +17,57 @@ pub mod resource;
 ///
 /// A _message_ can be anything, but most of the time, systems will expect a protocol to be implemented when sending
 /// messages to efficiently _move_ messages without having to serialize / deserialize them.
-pub trait System<M> {
+pub trait System<M, E = M>
+where
+  E: Clone,
+{
   /// Get the address of this system.
   fn system_addr(&self) -> Addr<M>;
 
-  /// Send a message to another system.
-  fn send_msg<T>(&self, addr: Addr<T>, msg: T) -> Result<(), SystemError> {
-    addr.sender.send(msg).map_err(|_| SystemError::CannotSend)
-  }
-
   /// Send a message to myself.
   fn send_msg_self(&self, msg: M) -> Result<(), SystemError> {
-    self.send_msg(self.system_addr(), msg)
+    self.system_addr().send_msg(msg)
   }
 
   /// Run the system and return its [`Addr`] so that other systems can use it.
-  fn startup(self) -> Addr<M>;
+  fn startup(self);
+
+  /// Emit an event.
+  ///
+  /// The difference between [`System::send_msg`] and [`System::emit_event`] is that the former requires an explicit
+  /// address, while the second will send to all “subscribers”.
+  fn publish(&self, event: E);
+
+  /// Subscribe a system that will receive events.
+  fn subscribe(&mut self, addr: Addr<E>);
+}
+
+/// UID of a system.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct SystemUID(u16);
+
+impl SystemUID {
+  pub fn new() -> Self {
+    SystemUID(thread_rng().gen())
+  }
+}
+
+impl fmt::Display for SystemUID {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    self.0.fmt(f)
+  }
 }
 
 /// An address of a [`System`] that allows sending messages of type `T`.
 #[derive(Debug)]
 pub struct Addr<T> {
   sender: mpsc::Sender<T>,
+}
+
+impl<T> Addr<T> {
+  pub fn send_msg(&self, msg: T) -> Result<(), SystemError> {
+    self.sender.send(msg).map_err(|_| SystemError::CannotSend)
+  }
 }
 
 impl<T> Clone for Addr<T> {

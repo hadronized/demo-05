@@ -6,12 +6,14 @@
 pub mod mesh;
 
 use colored::Colorize as _;
-use std::ffi::OsStr;
-use std::fs::read_dir;
-use std::path::{Path, PathBuf};
-use std::thread;
-use system::resource::ResourceManager;
-use system::{system_init, Addr, MsgQueue, System};
+use proto::RuntimeMsg;
+use std::{
+  ffi::OsStr,
+  fs::read_dir,
+  path::{Path, PathBuf},
+  thread,
+};
+use system::{resource::ResourceManager, system_init, Addr, MsgQueue, System, SystemUID};
 
 use crate::mesh::Mesh;
 
@@ -22,7 +24,7 @@ pub enum Entity {
   Mesh(Mesh),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum EntityMsg {
   /// Kill message.
   Kill,
@@ -31,23 +33,29 @@ pub enum EntityMsg {
 /// The [`Entity`] system.
 #[derive(Debug)]
 pub struct EntitySystem {
+  uid: SystemUID,
+  runtime_addr: Addr<RuntimeMsg>,
   /// Directory where all scarce resources this entity system knows about live in.
   root_dir: PathBuf,
   resources: ResourceManager<Entity>,
   addr: Addr<EntityMsg>,
   msg_queue: MsgQueue<EntityMsg>,
+  subscribers: Vec<Addr<EntityMsg>>,
 }
 
 impl EntitySystem {
   /// Create a new [`EntitySystem`].
-  pub fn new(root_dir: impl AsRef<Path>) -> Self {
+  pub fn new(runtime_addr: Addr<RuntimeMsg>, uid: SystemUID, root_dir: impl AsRef<Path>) -> Self {
     let (addr, msg_queue) = system_init();
 
     Self {
+      uid,
+      runtime_addr,
       root_dir: root_dir.as_ref().to_owned(),
       resources: ResourceManager::new(),
       addr,
       msg_queue,
+      subscribers: Vec::new(),
     }
   }
 
@@ -65,7 +73,10 @@ impl EntitySystem {
     loop {
       match self.msg_queue.recv() {
         Some(EntityMsg::Kill) | None => {
-          log::info!("exiting system…");
+          self
+            .runtime_addr
+            .send_msg(RuntimeMsg::SystemExit(self.uid))
+            .unwrap();
           break;
         }
 
@@ -151,14 +162,20 @@ impl System<EntityMsg> for EntitySystem {
     self.addr.clone()
   }
 
-  fn startup(self) -> Addr<EntityMsg> {
-    let addr = self.addr.clone();
-
+  fn startup(self) {
     // move into a thread for greater good
     let _ = thread::spawn(move || {
       self.start();
     });
+  }
 
-    addr
+  fn publish(&self, event: EntityMsg) {
+    for addr in &self.subscribers {
+      addr.send_msg(event.clone()).unwrap();
+    }
+  }
+
+  fn subscribe(&mut self, addr: Addr<EntityMsg>) {
+    self.subscribers.push(addr);
   }
 }

@@ -12,8 +12,11 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
+colored = "2"
+ctrlc = "3.1.6"
 env_logger = "0.7.1"
 entity = "0.1"
 log = "0.4.11"
+proto = "0.1"
 structopt = "0.3.17"
 system = "0.1"
