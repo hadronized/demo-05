@@ -59,7 +59,10 @@ impl System<RuntimeMsg, ()> for Runtime {
     entity_system.startup();
 
     // kill everything if we receive SIGINT
-    ctrlc::set_handler(|| {}).unwrap();
+    ctrlc::set_handler(move || {
+      entity_system_addr.send_msg(EntityMsg::Kill);
+    })
+    .unwrap();
 
     loop {
       match self.messages.recv() {
