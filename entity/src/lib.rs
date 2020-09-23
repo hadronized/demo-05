@@ -79,8 +79,6 @@ impl EntitySystem {
             .unwrap();
           break;
         }
-
-        _ => (),
       }
     }
   }
