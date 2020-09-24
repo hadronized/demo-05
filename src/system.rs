@@ -3,30 +3,6 @@
 //! This crate provides a very simple mechanism to create _systems_, which can send messages to each other, spawn new
 //! systems and perform local state mutation and I/O.
 //!
-//! # Features
-//!
-//! ## Typed protocol
-//!
-//! Messages systems exchange are _typed_: no serialization occur when sending a message to a system and messages are
-//! moved. It means that if you want to send an object that cannot be moved, you either need to box / share it with an
-//! [`Arc`], or use an indirect access to it, like a handle.
-//!
-//! ## Typed address
-//!
-//! Sending a message to a system requires knowing its address. Address are encoded with the [`Addr`] type, which
-//! type variable represents the typed protocol the recipient system talks. That point has a big implication on what
-//! you can do with systems and messages:
-//!
-//! - Because the [`Addr`] of the recipient must match the message you send, you can only send a message `T` to a
-//!   system you know which address is an `Addr<T>`.
-//! - Typed protocols don’t currently allow for _loose coupling_: you need to know the address of the system you want
-//!   to send a message to. Because each system implement a different protocol, it’s not possible to send the same
-//!   message to different systems, like a `Kill` message. This feature is implemented by another mechanism: events.
-//!
-//! ## Events
-//!
-//! A system is typed by the protocol it receives messages, but also by the event it can emit. Those events are
-//! distributed to systems that have registered to the system in a pub/sub way.
 
 pub mod resource;
 
@@ -40,17 +16,36 @@ use std::{fmt, sync::mpsc};
 ///
 /// A _message_ can be anything, but most of the time, systems will expect a protocol to be implemented when sending
 /// messages to efficiently _move_ messages without having to serialize / deserialize them.
-pub trait System<M> {
-  /// Get the address of this system.
-  fn system_addr(&self) -> Addr<M>;
+pub trait System<E = ()>
+where
+  E: Clone + Send,
+{
+  type Addr;
 
-  /// Send a message to myself.
-  fn send_msg_self(&self, msg: M) -> Result<(), SystemError> {
-    self.system_addr().send_msg(msg)
-  }
+  /// Get the address of this system.
+  fn system_addr(&self) -> Self::Addr;
 
   /// Run the system and return its [`Addr`] so that other systems can use it.
   fn startup(self);
+
+  /// Subscribe another system to listen for events.
+  fn subscribe(&mut self, subscriber: impl Subscriber<E> + 'static);
+
+  /// Publish events to all subscribers.
+  fn publish(&self, event: E);
+}
+
+/// Addresses that can receive messages.
+pub trait Subscriber<E>: Send
+where
+  E: Send,
+{
+  fn recv_msg(&self, msg: E) -> Result<(), SystemError>;
+}
+
+/// Addresses that can emit messages.
+pub trait Emit<M> {
+  fn send_msg(&self, msg: M) -> Result<(), SystemError>;
 }
 
 /// UID of a system.

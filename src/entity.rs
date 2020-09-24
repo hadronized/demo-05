@@ -7,7 +7,7 @@ pub mod mesh;
 
 use crate::{
   runtime::RuntimeMsg,
-  system::{resource::ResourceManager, system_init, Addr, MsgQueue, System, SystemUID},
+  system::{resource::ResourceManager, system_init, Addr, MsgQueue, Subscriber, System, SystemUID},
 };
 use colored::Colorize as _;
 use mesh::Mesh;
@@ -15,6 +15,7 @@ use std::{
   ffi::OsStr,
   fs::read_dir,
   path::{Path, PathBuf},
+  sync::Arc,
   thread,
 };
 
@@ -31,8 +32,12 @@ pub enum EntityMsg {
   Kill,
 }
 
+#[derive(Clone, Debug)]
+pub enum EntityEvent {
+  HelloWorld,
+}
+
 /// The [`Entity`] system.
-#[derive(Debug)]
 pub struct EntitySystem {
   uid: SystemUID,
   runtime_addr: Addr<RuntimeMsg>,
@@ -41,6 +46,7 @@ pub struct EntitySystem {
   resources: ResourceManager<Entity>,
   addr: Addr<EntityMsg>,
   msg_queue: MsgQueue<EntityMsg>,
+  subscribers: Vec<Box<dyn Subscriber<EntityEvent>>>,
 }
 
 impl EntitySystem {
@@ -55,6 +61,7 @@ impl EntitySystem {
       resources: ResourceManager::new(),
       addr,
       msg_queue,
+      subscribers: Vec::new(),
     }
   }
 
@@ -154,7 +161,9 @@ impl EntitySystem {
   }
 }
 
-impl System<EntityMsg> for EntitySystem {
+impl System<EntityEvent> for EntitySystem {
+  type Addr = Addr<EntityMsg>;
+
   fn system_addr(&self) -> Addr<EntityMsg> {
     self.addr.clone()
   }
@@ -164,5 +173,15 @@ impl System<EntityMsg> for EntitySystem {
     let _ = thread::spawn(move || {
       self.start();
     });
+  }
+
+  fn subscribe(&mut self, subscriber: impl Subscriber<EntityEvent> + 'static) {
+    self.subscribers.push(Box::new(subscriber));
+  }
+
+  fn publish(&self, event: EntityEvent) {
+    for sub in &self.subscribers {
+      sub.recv_msg(event.clone());
+    }
   }
 }
