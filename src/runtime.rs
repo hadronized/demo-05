@@ -1,10 +1,8 @@
-//! Protocols.
-//!
-//! This crate contains all protocols shared by all systems.
+//! The runtime system.
 
 #![deny(missing_docs)]
 
-use system::SystemUID;
+use crate::system::SystemUID;
 
 /// Runtime message.
 #[derive(Debug)]

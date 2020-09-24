@@ -28,12 +28,10 @@
 //! A system is typed by the protocol it receives messages, but also by the event it can emit. Those events are
 //! distributed to systems that have registered to the system in a pub/sub way.
 
-use std::fmt;
-use std::sync::mpsc;
+pub mod resource;
 
 use rand::{thread_rng, Rng as _};
-
-pub mod resource;
+use std::{fmt, sync::mpsc};
 
 /// Systems.
 ///

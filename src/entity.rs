@@ -5,17 +5,18 @@
 
 pub mod mesh;
 
+use crate::{
+  runtime::RuntimeMsg,
+  system::{resource::ResourceManager, system_init, Addr, MsgQueue, System, SystemUID},
+};
 use colored::Colorize as _;
-use proto::RuntimeMsg;
+use mesh::Mesh;
 use std::{
   ffi::OsStr,
   fs::read_dir,
   path::{Path, PathBuf},
   thread,
 };
-use system::{resource::ResourceManager, system_init, Addr, MsgQueue, System, SystemUID};
-
-use crate::mesh::Mesh;
 
 /// All possible entities.
 #[derive(Debug)]

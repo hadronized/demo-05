@@ -1,19 +1,28 @@
-[workspace]
-members = [
-  "audio",
-  "entity",
-  "graphics",
-  "proto",
-  "runtime",
-  "synchronizer",
-  "system",
-]
+[package]
+name = "spectra"
+version = "0.1.0"
+license = "BSD-3-Clause"
+authors = ["Dimitri Sabadie <dimitri.sabadie@gmail.com>"]
+description = "Demoscene is the best."
+keywords = []
+categories = []
+readme = "README.md"
+edition = "2018"
 
-[patch.crates-io]
-audio = { path = "audio" }
-entity = { path = "entity" }
-graphics = { path = "graphics" }
-proto = { path = "proto" }
-runtime = { path = "runtime" }
-synchronizer = { path = "synchronizer" }
-system = { path = "system" }
+[lib]
+path = "src/lib.rs"
+
+# [[bin]]
+# name = "runtime"
+# path = "src/runtime/main.rs"
+
+[dependencies]
+colored = "2"
+ctrlc = "3.1.6"
+env_logger = "0.7.1"
+log = "0.4.11"
+luminance = "0.42"
+luminance-derive = "0.6.2"
+rand = "0.7.3"
+structopt = "0.3.17"
+wavefront_obj = "8"

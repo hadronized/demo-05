@@ -1,11 +1,12 @@
+mod cli;
+pub mod proto;
+
 use colored::Colorize;
 use entity::{EntityMsg, EntitySystem};
 use proto::RuntimeMsg;
 use std::collections::HashSet;
 use structopt::StructOpt;
 use system::{system_init, Addr, MsgQueue, System, SystemUID};
-
-mod cli;
 
 /// Runtime system.
 struct Runtime {
