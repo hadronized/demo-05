@@ -2,6 +2,31 @@
 //!
 //! This crate provides a very simple mechanism to create _systems_, which can send messages to each other, spawn new
 //! systems and perform local state mutation and I/O.
+//!
+//! # Features
+//!
+//! ## Typed protocol
+//!
+//! Messages systems exchange are _typed_: no serialization occur when sending a message to a system and messages are
+//! moved. It means that if you want to send an object that cannot be moved, you either need to box / share it with an
+//! [`Arc`], or use an indirect access to it, like a handle.
+//!
+//! ## Typed address
+//!
+//! Sending a message to a system requires knowing its address. Address are encoded with the [`Addr`] type, which
+//! type variable represents the typed protocol the recipient system talks. That point has a big implication on what
+//! you can do with systems and messages:
+//!
+//! - Because the [`Addr`] of the recipient must match the message you send, you can only send a message `T` to a
+//!   system you know which address is an `Addr<T>`.
+//! - Typed protocols don’t currently allow for _loose coupling_: you need to know the address of the system you want
+//!   to send a message to. Because each system implement a different protocol, it’s not possible to send the same
+//!   message to different systems, like a `Kill` message. This feature is implemented by another mechanism: events.
+//!
+//! ## Events
+//!
+//! A system is typed by the protocol it receives messages, but also by the event it can emit. Those events are
+//! distributed to systems that have registered to the system in a pub/sub way.
 
 use std::fmt;
 use std::sync::mpsc;
