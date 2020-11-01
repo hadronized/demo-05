@@ -12,9 +12,9 @@ edition = "2018"
 [lib]
 path = "src/lib.rs"
 
-# [[bin]]
-# name = "runtime"
-# path = "src/runtime/main.rs"
+[[bin]]
+name = "runtime"
+path = "src/runtime/main.rs"
 
 [dependencies]
 colored = "2"

@@ -7,7 +7,10 @@ pub mod mesh;
 
 use crate::{
   runtime::RuntimeMsg,
-  system::{resource::ResourceManager, system_init, Addr, MsgQueue, Subscriber, System, SystemUID},
+  system::{
+    resource::ResourceManager, system_init, Addr, MsgQueue, Publisher, Subscriber, System,
+    SystemUID,
+  },
 };
 use colored::Colorize as _;
 use mesh::Mesh;
@@ -15,7 +18,6 @@ use std::{
   ffi::OsStr,
   fs::read_dir,
   path::{Path, PathBuf},
-  sync::Arc,
   thread,
 };
 
@@ -161,7 +163,7 @@ impl EntitySystem {
   }
 }
 
-impl System<EntityEvent> for EntitySystem {
+impl System for EntitySystem {
   type Addr = Addr<EntityMsg>;
 
   fn system_addr(&self) -> Addr<EntityMsg> {
@@ -174,14 +176,16 @@ impl System<EntityEvent> for EntitySystem {
       self.start();
     });
   }
+}
 
+impl Publisher<EntityEvent> for EntitySystem {
   fn subscribe(&mut self, subscriber: impl Subscriber<EntityEvent> + 'static) {
     self.subscribers.push(Box::new(subscriber));
   }
 
   fn publish(&self, event: EntityEvent) {
     for sub in &self.subscribers {
-      sub.recv_msg(event.clone());
+      sub.recv_msg(event.clone()).unwrap();
     }
   }
 }

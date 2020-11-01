@@ -1,12 +1,13 @@
 mod cli;
-pub mod proto;
 
 use colored::Colorize;
-use entity::{EntityMsg, EntitySystem};
-use proto::RuntimeMsg;
+use spectra::{
+  entity::{EntityMsg, EntitySystem},
+  runtime::RuntimeMsg,
+  system::{system_init, Addr, MsgQueue, System, SystemUID},
+};
 use std::collections::HashSet;
 use structopt::StructOpt;
-use system::{system_init, Addr, MsgQueue, System, SystemUID};
 
 /// Runtime system.
 struct Runtime {
@@ -41,7 +42,9 @@ impl Runtime {
   }
 }
 
-impl System<RuntimeMsg> for Runtime {
+impl System for Runtime {
+  type Addr = Addr<RuntimeMsg>;
+
   fn system_addr(&self) -> Addr<RuntimeMsg> {
     self.addr.clone()
   }

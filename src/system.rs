@@ -16,10 +16,7 @@ use std::{fmt, sync::mpsc};
 ///
 /// A _message_ can be anything, but most of the time, systems will expect a protocol to be implemented when sending
 /// messages to efficiently _move_ messages without having to serialize / deserialize them.
-pub trait System<E = ()>
-where
-  E: Clone + Send,
-{
+pub trait System {
   type Addr;
 
   /// Get the address of this system.
@@ -27,20 +24,26 @@ where
 
   /// Run the system and return its [`Addr`] so that other systems can use it.
   fn startup(self);
+}
 
+/// A system that can publish messages to subscriber.
+pub trait Publisher<M>
+where
+  M: Clone + Send,
+{
   /// Subscribe another system to listen for events.
-  fn subscribe(&mut self, subscriber: impl Subscriber<E> + 'static);
+  fn subscribe(&mut self, subscriber: impl Subscriber<M> + 'static);
 
   /// Publish events to all subscribers.
-  fn publish(&self, event: E);
+  fn publish(&self, event: M);
 }
 
 /// Addresses that can receive messages.
-pub trait Subscriber<E>: Send
+pub trait Subscriber<M>: Send
 where
-  E: Send,
+  M: Send,
 {
-  fn recv_msg(&self, msg: E) -> Result<(), SystemError>;
+  fn recv_msg(&self, msg: M) -> Result<(), SystemError>;
 }
 
 /// Addresses that can emit messages.
