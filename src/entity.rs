@@ -6,6 +6,7 @@
 pub mod mesh;
 
 use crate::{
+  proto::Kill,
   runtime::RuntimeMsg,
   system::{
     resource::ResourceManager, system_init, Addr, MsgQueue, Publisher, Subscriber, System,
@@ -34,6 +35,12 @@ pub enum EntityMsg {
   Kill,
 }
 
+impl From<Kill> for EntityMsg {
+  fn from(_: Kill) -> Self {
+    Self::Kill
+  }
+}
+
 #[derive(Clone, Debug)]
 pub enum EntityEvent {
   HelloWorld,
@@ -54,7 +61,7 @@ pub struct EntitySystem {
 impl EntitySystem {
   /// Create a new [`EntitySystem`].
   pub fn new(runtime_addr: Addr<RuntimeMsg>, uid: SystemUID, root_dir: impl AsRef<Path>) -> Self {
-    let (addr, msg_queue) = system_init();
+    let (addr, msg_queue) = system_init(uid);
 
     Self {
       uid,

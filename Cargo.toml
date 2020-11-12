@@ -16,13 +16,20 @@ path = "src/lib.rs"
 name = "runtime"
 path = "src/runtime/main.rs"
 
+[features]
+default = []
+trace-window-events = []
+
 [dependencies]
 colored = "2"
 ctrlc = "3.1.6"
 env_logger = "0.7.1"
+glfw = "0.41"
 log = "0.4.11"
-luminance = "0.42"
-luminance-derive = "0.6.2"
+luminance = "0.43.1"
+luminance-front = "0.3.1"
+luminance-glfw = "0.14.2"
+luminance-windowing = "0.9.3"
 rand = "0.7.3"
 structopt = "0.3.17"
 wavefront_obj = "8"

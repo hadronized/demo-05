@@ -70,21 +70,27 @@ impl fmt::Display for SystemUID {
 /// An address of a [`System`] that allows sending messages of type `T`.
 #[derive(Debug)]
 pub struct Addr<T> {
+  uid: SystemUID,
   sender: mpsc::Sender<T>,
 }
 
-impl<T> Addr<T> {
+impl<T> Addr<T>
+where
+  T: fmt::Debug,
+{
   pub fn send_msg(&self, msg: impl Into<T>) -> Result<(), SystemError> {
-    self
-      .sender
-      .send(msg.into())
-      .map_err(|_| SystemError::CannotSend)
+    let msg = msg.into();
+
+    log::trace!("sending message {:?} to {}", msg, self.uid);
+
+    self.sender.send(msg).map_err(|_| SystemError::CannotSend)
   }
 }
 
 impl<T> Clone for Addr<T> {
   fn clone(&self) -> Self {
     Addr {
+      uid: self.uid,
       sender: self.sender.clone(),
     }
   }
@@ -116,6 +122,11 @@ impl<T> MsgQueue<T> {
   pub fn recv(&self) -> Option<T> {
     self.receiver.recv().ok()
   }
+
+  /// Check whether a message is available or return `None`.
+  pub fn try_recv(&self) -> Option<T> {
+    self.receiver.try_recv().ok()
+  }
 }
 
 /// Default implementation of a system initialization procedure.
@@ -126,8 +137,8 @@ impl<T> MsgQueue<T> {
 /// - Present oneself to others by handing out an [`Addr`].
 ///
 /// This method is supposed to be used by systems’ implementations to ease creating the internal state of a system.
-pub fn system_init<T>() -> (Addr<T>, MsgQueue<T>) {
+pub fn system_init<T>(uid: SystemUID) -> (Addr<T>, MsgQueue<T>) {
   let (sender, receiver) = mpsc::channel();
 
-  (Addr { sender }, MsgQueue { receiver })
+  (Addr { uid, sender }, MsgQueue { receiver })
 }

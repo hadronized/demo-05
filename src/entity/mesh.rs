@@ -1,11 +1,11 @@
 //! Mesh related code.
 
-use luminance::tess::Mode;
-use luminance_derive::{Semantics, Vertex};
-use std::collections::HashMap;
-use std::fmt;
-use std::fs;
-use std::path::{Path, PathBuf};
+use luminance::{tess::Mode, Semantics, Vertex};
+use std::{
+  collections::HashMap,
+  fmt, fs,
+  path::{Path, PathBuf},
+};
 use wavefront_obj::obj;
 
 /// Vertex index used in [`Mesh`] to create primitive by connecting vertices.

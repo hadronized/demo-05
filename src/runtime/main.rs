@@ -1,12 +1,15 @@
 mod cli;
 
 use colored::Colorize;
+use luminance_windowing::WindowOpt;
 use spectra::{
   entity::{EntityMsg, EntitySystem},
+  graphics::GraphicsSystem,
+  proto::Kill,
   runtime::RuntimeMsg,
   system::{system_init, Addr, MsgQueue, System, SystemUID},
 };
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::mpsc::sync_channel, thread};
 use structopt::StructOpt;
 
 /// Runtime system.
@@ -18,7 +21,7 @@ struct Runtime {
 
 impl Runtime {
   fn new() -> Self {
-    let (addr, msg_queue) = system_init();
+    let (addr, msg_queue) = system_init(SystemUID::new());
 
     Runtime {
       systems: HashSet::new(),
@@ -56,32 +59,57 @@ impl System for Runtime {
     log::debug!("getting CLI options");
     let cli = cli::CLI::from_args();
 
+    // entity system
     let entity_uid = self.create_system("entity");
     let entity_system = EntitySystem::new(self.system_addr(), entity_uid, cli.entity_root_path);
     let entity_system_addr = entity_system.system_addr();
-    entity_system.startup();
+
+    // graphics system
+    let graphics_uid = self.create_system("graphics");
+    let graphics_system =
+      GraphicsSystem::new(self.system_addr(), graphics_uid, WindowOpt::default()).unwrap();
+    let graphics_system_addr = graphics_system.system_addr();
 
     // kill everything if we receive SIGINT
+    let runtime_system_addr_ctrlc = self.system_addr();
     ctrlc::set_handler(move || {
-      entity_system_addr.send_msg(EntityMsg::Kill).unwrap();
+      runtime_system_addr_ctrlc.send_msg(Kill).unwrap();
     })
     .unwrap();
 
-    loop {
+    entity_system.startup();
+
+    // oneshot message to state that all systems have quit
+    let (quit, has_quit) = sync_channel(1);
+
+    // spawn the current entity in a different thread; this is needed because of the fact the graphics system
+    // needs to run on the main thread (yeah I know it sucks)
+    thread::spawn(move || loop {
       match self.messages.recv() {
+        Some(RuntimeMsg::Kill) => {
+          let _ = entity_system_addr.send_msg(Kill);
+          let _ = graphics_system_addr.send_msg(Kill);
+        }
+
         Some(RuntimeMsg::SystemExit(uid)) => {
           log::info!("system {} has exited", uid.to_string().blue().bold());
           let _ = self.systems.remove(&uid);
         }
+
         None => {}
       }
 
       if self.systems.is_empty() {
+        log::info!("all systems cleared; bye…");
+        quit.send(()).unwrap();
         break;
       }
-    }
+    });
 
-    log::info!("all systems cleared; bye…");
+    graphics_system.startup();
+
+    // before completely quitting, we need to be sure everybody quit
+    has_quit.recv().unwrap();
   }
 }
 
