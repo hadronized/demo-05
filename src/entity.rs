@@ -8,6 +8,7 @@ pub mod mesh;
 use crate::{
   proto::Kill,
   runtime::RuntimeMsg,
+  system::resource::Handle,
   system::{
     resource::ResourceManager, system_init, Addr, MsgQueue, Publisher, Subscriber, System,
     SystemUID,
@@ -19,14 +20,15 @@ use std::{
   ffi::OsStr,
   fs::read_dir,
   path::{Path, PathBuf},
+  sync::Arc,
   thread,
 };
 
 /// All possible entities.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Entity {
   /// A [`Mesh`].
-  Mesh(Mesh),
+  Mesh(Arc<Mesh>),
 }
 
 #[derive(Clone, Debug)]
@@ -41,9 +43,14 @@ impl From<Kill> for EntityMsg {
   }
 }
 
+/// Event the entity system can emit.
 #[derive(Clone, Debug)]
 pub enum EntityEvent {
-  HelloWorld,
+  /// A new entity was loaded / reloaded.
+  Loaded {
+    handle: Handle<Entity>,
+    mesh: Entity,
+  },
 }
 
 /// The [`Entity`] system.
@@ -155,8 +162,18 @@ impl EntitySystem {
         let path = path_name.purple().italic();
         log::info!("{} {}", "loaded".green().bold(), path);
 
-        let h = self.resources.wrap(Entity::Mesh(mesh), path_name);
-        log::debug!("assigned {} handle {}", path, h.to_string().green().bold());
+        let mesh = Entity::Mesh(Arc::new(mesh));
+        let handle = self.resources.wrap(mesh.clone(), path_name);
+        log::debug!(
+          "assigned {} handle {}",
+          path,
+          handle.to_string().green().bold()
+        );
+
+        let event = EntityEvent::Loaded { handle, mesh };
+        for subscriber in &self.subscribers {
+          subscriber.recv_msg(event.clone());
+        }
       }
 
       Err(err) => {
