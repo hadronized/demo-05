@@ -72,6 +72,14 @@ pub struct GraphicsSystem {
   meshes: HashMap<Handle<Entity>, Tess<MeshVertex, MeshIndex>>,
 }
 
+impl Drop for GraphicsSystem {
+  fn drop(&mut self) {
+    // ensure we have removed the GPU objects prior to anything else; de-allocating the surface while GPU objects still
+    // exist is currently not supported and yield a bug
+    self.meshes.clear();
+  }
+}
+
 impl GraphicsSystem {
   pub fn new(
     runtime_addr: Addr<RuntimeMsg>,
