@@ -18,6 +18,7 @@ path = "src/runtime/main.rs"
 
 [features]
 default = []
+trace-system-msg = []
 trace-window-events = []
 
 [dependencies]

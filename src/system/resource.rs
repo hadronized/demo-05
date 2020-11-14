@@ -5,6 +5,7 @@
 //! that doesn’t leak the internal representation of the resource. Each handle is unique on the whole graph of
 //! system, which allows them to know which handle references which local / stateful resources they are handling.
 
+use colored::Colorize as _;
 use std::{cmp::Ordering, collections::HashMap, fmt, marker::PhantomData};
 
 /// Simple handle systems can talk about.
@@ -69,7 +70,7 @@ impl<T> std::hash::Hash for Handle<T> {
 
 impl<T> fmt::Display for Handle<T> {
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-    write!(f, "{}", self.id)
+    write!(f, "{}", self.id.to_string().cyan().bold())
   }
 }
 
@@ -101,7 +102,11 @@ impl<T> ResourceManager<T> {
   pub fn wrap(&mut self, resource: T, name: impl Into<String>) -> Handle<T> {
     let handle = self.gen_handle();
     let name = name.into();
-    log::debug!("wrapping resource {} with handle {}", name, handle);
+    log::debug!(
+      "wrapping resource {} with handle {}",
+      name,
+      handle.to_string().green().bold()
+    );
 
     let _ = self.resources.insert(handle.copy(), resource);
     let _ = self.translations.insert(name, handle.clone());

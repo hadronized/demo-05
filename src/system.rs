@@ -75,7 +75,9 @@ where
   pub fn send_msg(&self, msg: impl Into<T>) -> Result<(), SystemError> {
     let msg = msg.into();
 
-    log::trace!("sending message {:?} to {}", msg, self.uid);
+    if cfg!(feature = "trace-system-msg") {
+      log::trace!("sending message {:?} to {}", msg, self.uid);
+    }
 
     self.sender.send(msg).map_err(|_| SystemError::CannotSend)
   }

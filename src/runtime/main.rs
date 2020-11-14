@@ -7,7 +7,7 @@ use spectra::{
   graphics::GraphicsSystem,
   proto::Kill,
   runtime::RuntimeMsg,
-  system::{system_init, Addr, MsgQueue, System, SystemUID},
+  system::{system_init, Addr, MsgQueue, Publisher as _, System, SystemUID},
 };
 use std::{collections::HashSet, sync::mpsc::sync_channel, thread};
 use structopt::StructOpt;
@@ -61,7 +61,7 @@ impl System for Runtime {
 
     // entity system
     let entity_uid = self.create_system("entity");
-    let entity_system = EntitySystem::new(self.system_addr(), entity_uid, cli.entity_root_path);
+    let mut entity_system = EntitySystem::new(self.system_addr(), entity_uid, cli.entity_root_path);
     let entity_system_addr = entity_system.system_addr();
 
     // graphics system
@@ -69,6 +69,7 @@ impl System for Runtime {
     let graphics_system =
       GraphicsSystem::new(self.system_addr(), graphics_uid, WindowOpt::default()).unwrap();
     let graphics_system_addr = graphics_system.system_addr();
+    entity_system.subscribe(graphics_system_addr.clone());
 
     // kill everything if we receive SIGINT
     let runtime_system_addr_ctrlc = self.system_addr();

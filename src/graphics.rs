@@ -3,14 +3,20 @@
 //! This system is responsible in all the rendering operations.
 
 use crate::{
+  entity::{
+    mesh::{Mesh, MeshIndex, MeshVertex},
+    Entity, EntityEvent,
+  },
   proto::Kill,
   runtime::RuntimeMsg,
-  system::{system_init, Addr, MsgQueue, System, SystemUID},
+  system::{resource::Handle, system_init, Addr, MsgQueue, System, SystemUID},
 };
+use colored::Colorize as _;
 use glfw::{Action, Context as _, Key, WindowEvent};
+use luminance_front::tess::Tess;
 use luminance_glfw::{GlfwSurface, GlfwSurfaceError};
 use luminance_windowing::WindowOpt;
-use std::fmt;
+use std::{collections::HashMap, fmt, sync::Arc};
 
 const TITLE: &str = "Spectra";
 
@@ -18,11 +24,19 @@ const TITLE: &str = "Spectra";
 pub enum GraphicsMsg {
   /// Kill message.
   Kill,
+  /// Entity event; used to listen to entity system’s notifications.
+  EntityEvent(EntityEvent),
 }
 
 impl From<Kill> for GraphicsMsg {
   fn from(_: Kill) -> Self {
     Self::Kill
+  }
+}
+
+impl From<EntityEvent> for GraphicsMsg {
+  fn from(a: EntityEvent) -> Self {
+    Self::EntityEvent(a)
   }
 }
 
@@ -55,6 +69,7 @@ pub struct GraphicsSystem {
   addr: Addr<GraphicsMsg>,
   msg_queue: MsgQueue<GraphicsMsg>,
   surface: GlfwSurface,
+  meshes: HashMap<Handle<Entity>, Tess<MeshVertex, MeshIndex>>,
 }
 
 impl GraphicsSystem {
@@ -65,6 +80,7 @@ impl GraphicsSystem {
   ) -> Result<Self, GraphicsSystemError> {
     let (addr, msg_queue) = system_init(uid);
     let surface = GlfwSurface::new_gl33(TITLE, win_opt)?;
+    let meshes = HashMap::new();
 
     Ok(Self {
       uid,
@@ -72,7 +88,22 @@ impl GraphicsSystem {
       addr,
       msg_queue,
       surface,
+      meshes,
     })
+  }
+
+  /// React an entity.
+  fn accept_entity(&mut self, handle: Handle<Entity>, entity: Entity) {
+    log::info!("accepting entity for handle {}", handle);
+
+    match entity {
+      Entity::Mesh(mesh) => self.accept_mesh(handle, mesh),
+    }
+  }
+
+  /// Accept a mesh.
+  fn accept_mesh(&mut self, handle: Handle<Entity>, mesh: Arc<Mesh>) {
+    log::debug!("building GPU tessellation for handle {}", handle);
   }
 }
 
@@ -97,6 +128,10 @@ impl System for GraphicsSystem {
               .send_msg(RuntimeMsg::SystemExit(self.uid))
               .unwrap();
             break 'system;
+          }
+
+          GraphicsMsg::EntityEvent(EntityEvent::Loaded { handle, entity }) => {
+            self.accept_entity(handle, entity)
           }
         }
       }

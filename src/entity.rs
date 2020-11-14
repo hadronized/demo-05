@@ -10,8 +10,7 @@ use crate::{
   runtime::RuntimeMsg,
   system::resource::Handle,
   system::{
-    resource::ResourceManager, system_init, Addr, MsgQueue, Publisher, Subscriber, System,
-    SystemUID,
+    resource::ResourceManager, system_init, Addr, MsgQueue, Publisher, Recipient, System, SystemUID,
   },
 };
 use colored::Colorize as _;
@@ -49,7 +48,7 @@ pub enum EntityEvent {
   /// A new entity was loaded / reloaded.
   Loaded {
     handle: Handle<Entity>,
-    mesh: Entity,
+    entity: Entity,
   },
 }
 
@@ -62,7 +61,7 @@ pub struct EntitySystem {
   resources: ResourceManager<Entity>,
   addr: Addr<EntityMsg>,
   msg_queue: MsgQueue<EntityMsg>,
-  subscribers: Vec<Box<dyn Subscriber<EntityEvent>>>,
+  subscribers: Vec<Box<dyn Recipient<EntityEvent>>>,
 }
 
 impl EntitySystem {
@@ -164,16 +163,13 @@ impl EntitySystem {
 
         let mesh = Entity::Mesh(Arc::new(mesh));
         let handle = self.resources.wrap(mesh.clone(), path_name);
-        log::debug!(
-          "assigned {} handle {}",
-          path,
-          handle.to_string().green().bold()
-        );
+        log::debug!("assigned {} handle {}", path, handle);
 
-        let event = EntityEvent::Loaded { handle, mesh };
-        for subscriber in &self.subscribers {
-          subscriber.recv_msg(event.clone());
-        }
+        let event = EntityEvent::Loaded {
+          handle,
+          entity: mesh,
+        };
+        self.publish(event);
       }
 
       Err(err) => {
@@ -203,13 +199,13 @@ impl System for EntitySystem {
 }
 
 impl Publisher<EntityEvent> for EntitySystem {
-  fn subscribe(&mut self, subscriber: impl Subscriber<EntityEvent> + 'static) {
+  fn subscribe(&mut self, subscriber: impl Recipient<EntityEvent> + 'static) {
     self.subscribers.push(Box::new(subscriber));
   }
 
   fn publish(&self, event: EntityEvent) {
     for sub in &self.subscribers {
-      sub.recv_msg(event.clone()).unwrap();
+      sub.send_msg(event.clone()).unwrap();
     }
   }
 }
