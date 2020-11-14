@@ -31,23 +31,16 @@ pub trait Publisher<M>
 where
   M: Clone + Send,
 {
-  /// Subscribe another system to listen for events.
-  fn subscribe(&mut self, subscriber: impl Subscriber<M> + 'static);
+  /// Subscribe another system that will listen to our events.
+  fn subscribe(&mut self, subscriber: impl Recipient<M> + 'static);
 
   /// Publish events to all subscribers.
   fn publish(&self, event: M);
 }
 
-/// Addresses that can receive messages.
-pub trait Subscriber<M>: Send
-where
-  M: Send,
-{
-  fn recv_msg(&self, msg: M) -> Result<(), SystemError>;
-}
-
-/// Addresses that can emit messages.
-pub trait Emit<M> {
+/// Addresses which we can send messages `M` to.
+pub trait Recipient<M>: Send {
+  /// Send a message to this address.
   fn send_msg(&self, msg: M) -> Result<(), SystemError>;
 }
 
@@ -78,6 +71,7 @@ impl<T> Addr<T>
 where
   T: fmt::Debug,
 {
+  /// Send a message to this address.
   pub fn send_msg(&self, msg: impl Into<T>) -> Result<(), SystemError> {
     let msg = msg.into();
 
@@ -93,6 +87,15 @@ impl<T> Clone for Addr<T> {
       uid: self.uid,
       sender: self.sender.clone(),
     }
+  }
+}
+
+impl<T, M> Recipient<M> for Addr<T>
+where
+  T: Send + fmt::Debug + From<M>,
+{
+  fn send_msg(&self, msg: M) -> Result<(), SystemError> {
+    Addr::send_msg(self, T::from(msg))
   }
 }
 
