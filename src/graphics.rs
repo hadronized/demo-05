@@ -13,6 +13,7 @@ use crate::{
 };
 use colored::Colorize as _;
 use glfw::{Action, Context as _, Key, WindowEvent};
+use luminance_front::context::GraphicsContext as _;
 use luminance_front::tess::Tess;
 use luminance_glfw::{GlfwSurface, GlfwSurfaceError};
 use luminance_windowing::WindowOpt;
@@ -68,8 +69,8 @@ pub struct GraphicsSystem {
   runtime_addr: Addr<RuntimeMsg>,
   addr: Addr<GraphicsMsg>,
   msg_queue: MsgQueue<GraphicsMsg>,
-  surface: GlfwSurface,
   meshes: HashMap<Handle<Entity>, Tess<MeshVertex, MeshIndex>>,
+  surface: GlfwSurface,
 }
 
 impl Drop for GraphicsSystem {
@@ -112,6 +113,35 @@ impl GraphicsSystem {
   /// Accept a mesh.
   fn accept_mesh(&mut self, handle: Handle<Entity>, mesh: Arc<Mesh>) {
     log::debug!("building GPU tessellation for handle {}", handle);
+
+    let mesh = &*mesh;
+    let tess_res = self
+      .surface
+      .new_tess()
+      .set_vertices(mesh.vertices().clone())
+      .set_indices(mesh.indices().clone())
+      .set_mode(mesh.mode())
+      .build();
+
+    match tess_res {
+      Ok(tess) => {
+        if self.meshes.insert(handle, tess).is_some() {
+          // the mesh was already present; reload
+          log::info!(
+            "mesh handle {} was already present and was replaced",
+            handle
+          );
+        }
+      }
+
+      Err(err) => {
+        log::error!(
+          "cannot accept mesh handle {} because the GPU tesselation failed to build; reason: {}",
+          handle,
+          err
+        );
+      }
+    }
   }
 }
 

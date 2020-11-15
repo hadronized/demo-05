@@ -45,6 +45,18 @@ pub struct Mesh {
 }
 
 impl Mesh {
+  pub fn vertices(&self) -> &Vec<MeshVertex> {
+    &self.vertices
+  }
+
+  pub fn indices(&self) -> &Vec<MeshIndex> {
+    &self.indices
+  }
+
+  pub fn mode(&self) -> Mode {
+    self.mode
+  }
+
   fn validate_path(path: &Path) -> Result<(), MeshLoadingError> {
     log::info!("loading mesh at {}", path.display());
 
