@@ -52,7 +52,7 @@ Representations are a way to be able to load, stream and watch `EntityA` for dif
 way this is done is by adding some code in the format dispatcher:
 
 1. Extensions are matched: for instance, for `.obj` files, we can treat them as `EntityA` by invoking the right parser.
-2. Some resources share the same format, such as _JSON_, _TOML_, etc.. In those cases, `EntityA` could also be
+2. Some resources share the same format, such as _JSON_, _TOML_, etc. In those cases, `EntityA` could also be
   represented via JSON. In such a situation, a code path must be added in the right format dispatcher.
 
 On a general note, a type of resource can be loaded from different _sources_. The way the entity system works is
