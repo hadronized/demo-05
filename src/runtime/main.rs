@@ -3,7 +3,7 @@ mod cli;
 use colored::Colorize;
 use luminance_windowing::WindowOpt;
 use spectra::{
-  entity::{EntityMsg, EntitySystem},
+  entity::EntitySystem,
   graphics::GraphicsSystem,
   proto::Kill,
   runtime::RuntimeMsg,

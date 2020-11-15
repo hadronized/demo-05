@@ -11,7 +11,6 @@ use crate::{
   runtime::RuntimeMsg,
   system::{resource::Handle, system_init, Addr, MsgQueue, System, SystemUID},
 };
-use colored::Colorize as _;
 use glfw::{Action, Context as _, Key, WindowEvent};
 use luminance_front::context::GraphicsContext as _;
 use luminance_front::tess::Tess;
