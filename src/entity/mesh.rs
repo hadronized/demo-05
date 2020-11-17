@@ -60,7 +60,8 @@ impl Mesh {
 
   fn validate_path(path: &Path) -> Result<(), MeshLoadingError> {
     log::info!(
-      "loading mesh at {}",
+      "loading {} at {}",
+      "obj".yellow().italic(),
       path.display().to_string().purple().italic()
     );
 

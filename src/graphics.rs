@@ -102,7 +102,7 @@ impl GraphicsSystem {
 
   /// React an entity.
   fn accept_entity(&mut self, handle: Handle<Entity>, entity: Entity) {
-    log::info!("accepting entity for handle {}", handle);
+    log::debug!("accepting entity {}", handle);
 
     match entity {
       Entity::Mesh(mesh) => self.accept_mesh(handle, mesh),
@@ -111,7 +111,8 @@ impl GraphicsSystem {
 
   /// Accept a mesh.
   fn accept_mesh(&mut self, handle: Handle<Entity>, mesh: Arc<Mesh>) {
-    log::debug!("building GPU tessellation for handle {}", handle);
+    log::info!("accepting mesh {}", handle);
+    log::debug!("building GPU tessellation for mesh {}", handle);
 
     let mesh = &*mesh;
     let tess_res = self
@@ -124,7 +125,9 @@ impl GraphicsSystem {
 
     match tess_res {
       Ok(tess) => {
-        if self.meshes.insert(handle, tess).is_some() {
+        if self.meshes.insert(handle, tess).is_none() {
+          log::info!("mesh {} successfully represented on the GPU", handle);
+        } else {
           // the mesh was already present; reload
           log::info!(
             "mesh handle {} was already present and was replaced",

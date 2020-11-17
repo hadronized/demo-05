@@ -60,6 +60,7 @@ impl System for Runtime {
 
     // runtime system
     let runtime_uid = self.create_system("runtime");
+    let runtime_system_addr = self.system_addr();
 
     // entity system
     let entity_uid = self.create_system("entity");
@@ -74,7 +75,7 @@ impl System for Runtime {
     entity_system.subscribe(graphics_system_addr.clone());
 
     // kill everything if we receive SIGINT
-    let runtime_system_addr_ctrlc = self.system_addr();
+    let runtime_system_addr_ctrlc = runtime_system_addr.clone();
     ctrlc::set_handler(move || {
       runtime_system_addr_ctrlc.send_msg(Kill).unwrap();
     })
@@ -92,7 +93,8 @@ impl System for Runtime {
         Some(RuntimeMsg::Kill) => {
           let _ = entity_system_addr.send_msg(Kill);
           let _ = graphics_system_addr.send_msg(Kill);
-          let _ = self.systems.remove(&runtime_uid);
+          // let _ = self.systems.remove(&runtime_uid);
+          runtime_system_addr.send_msg(RuntimeMsg::SystemExit(runtime_uid));
         }
 
         Some(RuntimeMsg::SystemExit(uid)) => {
