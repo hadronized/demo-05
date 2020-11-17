@@ -135,7 +135,7 @@ impl GraphicsSystem {
 
       Err(err) => {
         log::error!(
-          "cannot accept mesh handle {} because the GPU tesselation failed to build; reason: {}",
+          "cannot accept mesh handle {} because the GPU tessellation failed to build; reason: {}",
           handle,
           err
         );
@@ -152,8 +152,6 @@ impl System for GraphicsSystem {
   }
 
   fn startup(mut self) {
-    log::info!("starting");
-
     // main loop
     'system: loop {
       // message loop

@@ -1,5 +1,6 @@
 //! Mesh related code.
 
+use colored::Colorize as _;
 use luminance::{tess::Mode, Semantics, Vertex};
 use std::{
   collections::HashMap,
@@ -58,7 +59,10 @@ impl Mesh {
   }
 
   fn validate_path(path: &Path) -> Result<(), MeshLoadingError> {
-    log::info!("loading mesh at {}", path.display());
+    log::info!(
+      "loading mesh at {}",
+      path.display().to_string().purple().italic()
+    );
 
     if !path.is_file() {
       Err(MeshLoadingError::cannot_read_path(path, "not a file"))
@@ -98,9 +102,9 @@ impl Mesh {
   fn traverse_object(object: obj::Object) -> Result<Self, MeshLoadingError> {
     let geometry = object.geometry.into_iter().next().unwrap();
 
-    log::info!("  loading object {}", object.name);
-    log::info!("    {} vertices", object.vertices.len());
-    log::info!("    {} shapes", geometry.shapes.len());
+    log::debug!("  loading object {}", object.name);
+    log::debug!("    {} vertices", object.vertices.len());
+    log::debug!("    {} shapes", geometry.shapes.len());
 
     Self::traverse_geometry(object.vertices, object.normals, geometry)
   }

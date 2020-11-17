@@ -36,8 +36,8 @@ impl Runtime {
 
     log::info!(
       "creating new {} system {}",
-      name.blue().bold(),
-      uid.to_string().blue().bold()
+      name.blue(),
+      uid.to_string().cyan().bold()
     );
     self.systems.insert(uid);
 
@@ -54,10 +54,12 @@ impl System for Runtime {
 
   fn startup(mut self) {
     env_logger::init();
-    log::info!("starting runtime");
 
     log::debug!("getting CLI options");
     let cli = cli::CLI::from_args();
+
+    // runtime system
+    let runtime_uid = self.create_system("runtime");
 
     // entity system
     let entity_uid = self.create_system("entity");
@@ -90,10 +92,11 @@ impl System for Runtime {
         Some(RuntimeMsg::Kill) => {
           let _ = entity_system_addr.send_msg(Kill);
           let _ = graphics_system_addr.send_msg(Kill);
+          let _ = self.systems.remove(&runtime_uid);
         }
 
         Some(RuntimeMsg::SystemExit(uid)) => {
-          log::info!("system {} has exited", uid.to_string().blue().bold());
+          log::info!("system {} has exited", uid.to_string().cyan().bold());
           let _ = self.systems.remove(&uid);
         }
 

@@ -119,7 +119,7 @@ impl EntitySystem {
         self.traverse_directory(&path);
       } else if path.is_file() {
         // invoke a handler for this file
-        log::info!(
+        log::debug!(
           "found resource file {}",
           path.display().to_string().purple().italic(),
         );
@@ -147,7 +147,7 @@ impl EntitySystem {
       "obj" => self.load_obj(path),
       _ => log::warn!(
         "unknown extension {} for path {}",
-        ext.blue().italic(),
+        ext.yellow().italic(),
         path.display().to_string().purple().italic(),
       ),
     }
@@ -155,6 +155,12 @@ impl EntitySystem {
 
   /// Load .obj files.
   fn load_obj(&mut self, path: &Path) {
+    log::debug!(
+      "{} is an {} mesh; loading…",
+      path.display(),
+      "obj".yellow().italic()
+    );
+
     match Mesh::load_from_path(path) {
       Ok(mesh) => {
         let path_name = path.display().to_string();
@@ -174,7 +180,8 @@ impl EntitySystem {
 
       Err(err) => {
         log::error!(
-          "cannot load OBJ {}: {}",
+          "cannot load {} {}: {}",
+          "obj".yellow().italic(),
           path.display().to_string().purple().italic(),
           err,
         );
