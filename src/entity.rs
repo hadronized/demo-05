@@ -165,11 +165,11 @@ impl EntitySystem {
       Ok(mesh) => {
         let path_name = path.display().to_string();
         let path = path_name.purple().italic();
-        log::info!("{} {}", "loaded".green().bold(), path);
-
         let mesh = Entity::Mesh(Arc::new(mesh));
         let handle = self.resources.wrap(mesh.clone(), path_name);
+
         log::debug!("assigned {} handle {}", path, handle);
+        log::info!("{} mesh {} at {}", "loaded".green().bold(), handle, path);
 
         let event = EntityEvent::Loaded {
           handle,
