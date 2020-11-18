@@ -2,6 +2,8 @@
 //!
 //! This system is responsible in all the rendering operations.
 
+mod camera;
+
 use crate::{
   entity::{
     mesh::{Mesh, MeshIndex, MeshVertex},
@@ -155,6 +157,9 @@ impl System for GraphicsSystem {
   }
 
   fn startup(mut self) {
+    log::debug!("creating a free fly camera just for fun");
+    let cam = camera::FreeflyCamera::new(16. / 9., cgmath::Deg(90.), 0.1, 10.);
+
     // main loop
     'system: loop {
       // message loop

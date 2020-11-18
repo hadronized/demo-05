@@ -18,10 +18,12 @@ path = "src/runtime/main.rs"
 
 [features]
 default = []
+trace-camera = []
 trace-system-msg = []
 trace-window-events = []
 
 [dependencies]
+cgmath = "0.17"
 colored = "2"
 ctrlc = "3.1.6"
 env_logger = "0.7.1"
