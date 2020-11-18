@@ -92,7 +92,10 @@ impl FreeflyCamera {
 
   /// Recompute the projection view matrix.
   fn recompute_projview(&mut self) {
-    log::trace!("recomputing projview matrix…");
+    if cfg!(feature = "trace-camera") {
+      log::trace!("recomputing projview matrix…");
+    }
+
     let qy = Quaternion::from_angle_y(self.y_orientation_theta);
     let qx = Quaternion::from_angle_x(self.x_orientation_theta);
 
@@ -107,10 +110,12 @@ impl FreeflyCamera {
 
   /// Change the aspect ratio.
   pub fn set_aspect_ratio(&mut self, aspect_ratio: f32) {
-    log::trace!(
-      "setting aspect ratio to {}",
-      aspect_ratio.to_string().yellow().italic()
-    );
+    if cfg!(feature = "trace-camera") {
+      log::trace!(
+        "setting aspect ratio to {}",
+        aspect_ratio.to_string().yellow().italic()
+      );
+    }
 
     self.aspect_ratio = aspect_ratio;
     self.recompute_projview();
@@ -120,10 +125,12 @@ impl FreeflyCamera {
   pub fn set_field_of_view(&mut self, fovy: impl Into<Rad<f32>>) {
     let Rad(fovy) = fovy.into();
 
-    log::trace!(
-      "setting field of view to {}",
-      fovy.to_string().yellow().italic()
-    );
+    if cfg!(feature = "trace-camera") {
+      log::trace!(
+        "setting field of view to {}",
+        fovy.to_string().yellow().italic()
+      );
+    }
 
     self.fovy = Rad(fovy.max(0.).min(PI - f32::EPSILON));
     self.recompute_projview();
@@ -131,7 +138,9 @@ impl FreeflyCamera {
 
   /// Change the Z-near clipping distance.
   pub fn set_z_near(&mut self, z_near: f32) {
-    log::trace!("setting z-near to {}", z_near.to_string().yellow().italic());
+    if cfg!(feature = "trace-camera") {
+      log::trace!("setting z-near to {}", z_near.to_string().yellow().italic());
+    }
 
     self.z_near = z_near;
     self.recompute_projview();
@@ -139,7 +148,9 @@ impl FreeflyCamera {
 
   /// Change the Z-far clipping distance.
   pub fn set_z_far(&mut self, z_far: f32) {
-    log::trace!("setting z-far to {}", z_far.to_string().yellow().italic());
+    if cfg!(feature = "trace-camera") {
+      log::trace!("setting z-far to {}", z_far.to_string().yellow().italic());
+    }
 
     self.z_far = z_far;
     self.recompute_projview();
@@ -147,7 +158,9 @@ impl FreeflyCamera {
 
   /// Move the camera by the given vector.
   pub fn move_by(&mut self, v: Vector3<f32>) {
-    log::trace!("moving to {}", format!("{:?}", v).yellow().italic());
+    if cfg!(feature = "trace-camera") {
+      log::trace!("moving to {}", format!("{:?}", v).yellow().italic());
+    }
 
     self.position -= self.orientation.invert().rotate_vector(v);
     self.recompute_projview();
@@ -158,11 +171,13 @@ impl FreeflyCamera {
     let x_theta = x_theta.into();
     let y_theta = y_theta.into();
 
-    log::trace!(
-      "orienting with x theta {}rad and y theta {}rad",
-      x_theta.0.to_string().yellow().italic(),
-      y_theta.0.to_string().yellow().italic()
-    );
+    if cfg!(feature = "trace-camera") {
+      log::trace!(
+        "orienting with x theta {}rad and y theta {}rad",
+        x_theta.0.to_string().yellow().italic(),
+        y_theta.0.to_string().yellow().italic()
+      );
+    }
 
     self.x_orientation_theta += x_theta;
     self.y_orientation_theta += y_theta;
