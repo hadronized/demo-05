@@ -8,6 +8,7 @@ use colored::Colorize as _;
 use std::f32::consts::PI;
 
 /// A freefly camera.
+#[derive(Clone, Debug, PartialEq)]
 pub struct FreeflyCamera {
   /// Aspect ratio (width / height) of the viewport.
   aspect_ratio: f32,
@@ -184,3 +185,8 @@ impl FreeflyCamera {
     self.recompute_projview();
   }
 }
+
+/// Freefly camera state.
+///
+/// This state allows to manipulate a freefly by accumulating key presses and clicks.
+pub struct FreeflyCameraState {}

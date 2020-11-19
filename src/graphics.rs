@@ -13,7 +13,8 @@ use crate::{
   runtime::RuntimeMsg,
   system::{resource::Handle, system_init, Addr, MsgQueue, System, SystemUID},
 };
-use glfw::{Action, Context as _, Key, WindowEvent};
+use cgmath::{Deg, Rad, Vector3};
+use glfw::{Action, Context as _, Key, MouseButton, WindowEvent};
 use luminance_front::context::GraphicsContext as _;
 use luminance_front::tess::Tess;
 use luminance_glfw::{GlfwSurface, GlfwSurfaceError};
@@ -71,6 +72,7 @@ pub struct GraphicsSystem {
   addr: Addr<GraphicsMsg>,
   msg_queue: MsgQueue<GraphicsMsg>,
   meshes: HashMap<Handle<Entity>, Tess<MeshVertex, MeshIndex>>,
+  camera: camera::FreeflyCamera,
   surface: GlfwSurface,
 }
 
@@ -91,6 +93,8 @@ impl GraphicsSystem {
     let (addr, msg_queue) = system_init(uid);
     let surface = GlfwSurface::new_gl33(TITLE, win_opt)?;
     let meshes = HashMap::new();
+    let (w, h) = surface.window.get_framebuffer_size();
+    let camera = camera::FreeflyCamera::new(w as f32 / h as f32, Deg(90.), 0.1, 100.);
 
     Ok(Self {
       uid,
@@ -99,6 +103,7 @@ impl GraphicsSystem {
       msg_queue,
       surface,
       meshes,
+      camera,
     })
   }
 
@@ -157,8 +162,11 @@ impl System for GraphicsSystem {
   }
 
   fn startup(mut self) {
-    log::debug!("creating a free fly camera just for fun");
-    let cam = camera::FreeflyCamera::new(16. / 9., cgmath::Deg(90.), 0.1, 10.);
+    // event state
+    // last known position of the cursor
+    let mut last_cursor_pos: Option<[f32; 2]> = None;
+    // position at which the cursor was at when a left click was pressed
+    let mut left_click_press_pos = None;
 
     // main loop
     'system: loop {
@@ -196,6 +204,54 @@ impl System for GraphicsSystem {
             // notify the runtime system to kill everybody
             self.runtime_addr.send_msg(Kill).unwrap();
             break 'system;
+          }
+
+          WindowEvent::Key(Key::W, _, action, _)
+            if action == Action::Press || action == Action::Repeat =>
+          {
+            self.camera.move_by(-Vector3::unit_z() * 0.1);
+          }
+
+          WindowEvent::Key(Key::S, _, action, _)
+            if action == Action::Press || action == Action::Repeat =>
+          {
+            self.camera.move_by(Vector3::unit_z() * 0.1);
+          }
+
+          WindowEvent::Key(Key::A, _, action, _)
+            if action == Action::Press || action == Action::Repeat =>
+          {
+            self.camera.move_by(-Vector3::unit_x() * 0.1);
+          }
+
+          WindowEvent::Key(Key::D, _, action, _)
+            if action == Action::Press || action == Action::Repeat =>
+          {
+            self.camera.move_by(Vector3::unit_x() * 0.1);
+          }
+
+          WindowEvent::CursorPos(x, y) => {
+            let [x, y] = [x as f32, y as f32];
+
+            // compute relative offset if needed
+            let cursor_rel_pos: Option<[f32; 2]> = last_cursor_pos.map(|[lx, ly]| [x - lx, y - ly]);
+            last_cursor_pos = Some([x, y]);
+
+            match cursor_rel_pos {
+              Some([rx, ry]) if left_click_press_pos.is_some() => {
+                self.camera.orient(Rad(ry as f32), Rad(rx as f32));
+              }
+
+              _ => (),
+            }
+          }
+
+          WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => {
+            left_click_press_pos = last_cursor_pos;
+          }
+
+          WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => {
+            left_click_press_pos = None;
           }
 
           _ => (),
