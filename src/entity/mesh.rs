@@ -76,7 +76,10 @@ impl Mesh {
     Self::validate_path(path)?;
 
     // read the content of the path at once (no streaming)
-    log::debug!("  opening mesh {}", path.display());
+    log::debug!(
+      "  opening mesh {}",
+      path.display().to_string().purple().italic()
+    );
     let file_content = fs::read_to_string(path)
       .map_err(|e| MeshLoadingError::cannot_read_path(path, e.to_string()))?;
 

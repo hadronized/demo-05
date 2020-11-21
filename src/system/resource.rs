@@ -99,19 +99,45 @@ impl<T> ResourceManager<T> {
   ///
   /// The `name` parameter refers to the identifier external systems might give to this resource. You cannot use it to
   /// ask this resource back, but you can get a [`Handle`] from an identifier later. See the [`ResourceManager::translate`] method for further information.
-  pub fn wrap(&mut self, resource: T, name: impl Into<String>) -> Handle<T> {
-    let handle = self.gen_handle();
-    let name = name.into();
-    log::debug!(
-      "wrapping resource {} with handle {}",
-      name,
-      handle.to_string().green().bold()
-    );
+  pub fn wrap(&mut self, resource: T, name: impl AsRef<str>) -> Handle<T> {
+    let name = name.as_ref();
 
-    let _ = self.resources.insert(handle.copy(), resource);
-    let _ = self.translations.insert(name, handle.clone());
+    match self.ask(name) {
+      Some(handle) => {
+        // the resource already exists; let’s just replace it
+        log::debug!(
+          "replacing resource {} {}",
+          name.blue().bold(),
+          handle.to_string().green().bold()
+        );
+        self.resources.insert(handle, resource);
 
-    handle
+        handle
+      }
+
+      None => {
+        // this is the first time we see this resource; wrap it up
+        let handle = self.gen_handle();
+        let name = name.to_owned();
+        log::debug!(
+          "wrapping resource {} with handle {}",
+          name.blue().bold(),
+          handle.to_string().green().bold()
+        );
+
+        let _ = self.resources.insert(handle.copy(), resource);
+        let _ = self.translations.insert(name, handle.clone());
+
+        handle
+      }
+    }
+  }
+
+  /// Translate a resource name into a handle.
+  ///
+  /// This function allows to check whether a resource is already registered and eventually modify it.
+  pub fn ask(&self, name: impl AsRef<str>) -> Option<Handle<T>> {
+    self.translations.get(name.as_ref()).copied()
   }
 
   /// Lookup the resource referred to by the input handle.

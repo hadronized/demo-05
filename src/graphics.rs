@@ -113,6 +113,7 @@ impl GraphicsSystem {
 
     match entity {
       Entity::Mesh(mesh) => self.accept_mesh(handle, mesh),
+      _ => (),
     }
   }
 

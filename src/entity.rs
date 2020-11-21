@@ -4,6 +4,7 @@
 //! independent objects identified by a unique identifier.
 
 pub mod mesh;
+pub mod parameter;
 
 use crate::{
   proto::Kill,
@@ -28,6 +29,8 @@ use std::{
 pub enum Entity {
   /// A [`Mesh`].
   Mesh(Arc<Mesh>),
+  /// A [`Parameter`].
+  Parameter(self::parameter::Parameter),
 }
 
 #[derive(Clone, Debug)]
@@ -145,6 +148,7 @@ impl EntitySystem {
   fn extension_based_dispatch(&mut self, ext: &str, path: &Path) {
     match ext {
       "obj" => self.load_obj(path),
+      "json" => self.dispatch_json(path),
       _ => log::warn!(
         "unknown extension {} for path {}",
         ext.yellow().italic(),
@@ -155,12 +159,6 @@ impl EntitySystem {
 
   /// Load .obj files.
   fn load_obj(&mut self, path: &Path) {
-    log::debug!(
-      "{} is an {} mesh; loading…",
-      path.display(),
-      "obj".yellow().italic()
-    );
-
     match Mesh::load_from_path(path) {
       Ok(mesh) => {
         let path_name = path.display().to_string();
@@ -182,6 +180,68 @@ impl EntitySystem {
         log::error!(
           "cannot load {} {}: {}",
           "obj".yellow().italic(),
+          path.display().to_string().purple().italic(),
+          err,
+        );
+      }
+    }
+  }
+
+  fn dispatch_json(&mut self, path: &Path) {
+    // extract the “sub” extension, e.g. foo.bar.json’s sub extension is bar.
+    match Self::extract_sub_extension(path) {
+      Some(sub_ext) => match sub_ext {
+        "param" => self.load_parameters(path),
+
+        _ => {
+          log::warn!(
+            "unknown JSON {} resource for {}",
+            sub_ext.yellow().italic(),
+            path.display().to_string().purple().italic()
+          );
+        }
+      },
+
+      None => {
+        log::warn!(
+          "cannot load JSON file {} because it doesn’t have a sub extension",
+          path.display().to_string().purple().italic()
+        );
+      }
+    }
+  }
+
+  fn extract_sub_extension(path: &Path) -> Option<&str> {
+    path.file_stem().and_then(OsStr::to_str).and_then(|name| {
+      let mut components = name.rsplit('.');
+      let sub_ext = components.next()?;
+
+      // check if we have at least two components in the name (foo.sub_ext)
+      if components.next().is_some() {
+        Some(sub_ext)
+      } else {
+        None
+      }
+    })
+  }
+
+  fn load_parameters(&mut self, path: &Path) {
+    match self::parameter::Parameter::load_from_file(path) {
+      Ok(params) => {
+        let path = path.display().to_string().purple().italic();
+        log::info!("{} parameters at {}", "loaded".green().bold(), path);
+
+        // check each parameter and create handle if not already existing; update otherwise
+        for (name, param) in params {
+          log::debug!("  found parameter {}: {:?}", name.purple().italic(), param);
+          self.resources.wrap(Entity::Parameter(param), name);
+        }
+      }
+
+      Err(err) => {
+        log::error!(
+          "cannot load {} {}: {}",
+          "parameters".yellow().italic(),
           path.display().to_string().purple().italic(),
           err,
         );
