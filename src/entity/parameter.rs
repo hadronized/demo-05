@@ -10,7 +10,7 @@
 //!   parameters, depending on your need (constant, linear, cosine, Bézier, etc.).
 
 use colored::Colorize as _;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::{collections::HashMap, error, fmt, fs, io, path::Path};
 
 #[derive(Debug)]
@@ -73,27 +73,55 @@ impl Parameter {
   }
 }
 
+macro_rules! uint_serde_override {
+  ($t:tt, $r:tt) => {
+    #[derive(Debug, Deserialize)]
+    struct $t {
+      unsigned: $r,
+    }
+
+    impl $t {
+      fn deserialize_override<'d, D>(deserializer: D) -> Result<$r, D::Error>
+      where
+        D: Deserializer<'d>,
+      {
+        let Self { unsigned } = Self::deserialize(deserializer)?;
+        Ok(unsigned)
+      }
+    }
+  };
+}
+
+uint_serde_override!(UInt, u32);
+uint_serde_override!(UInt2, [u32; 2]);
+uint_serde_override!(UInt3, [u32; 3]);
+uint_serde_override!(UInt4, [u32; 4]);
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum Constant {
   // 1D
   Bool(bool),
   Int(i32),
+  #[serde(deserialize_with = "UInt::deserialize_override")]
   UInt(u32),
   Float(f32),
   // 2D
   Bool2([bool; 2]),
   Int2([i32; 2]),
+  #[serde(deserialize_with = "UInt2::deserialize_override")]
   UInt2([u32; 2]),
   Float2([f32; 2]),
   // 3D
   Bool3([bool; 3]),
   Int3([i32; 3]),
+  #[serde(deserialize_with = "UInt3::deserialize_override")]
   UInt3([u32; 3]),
   Float3([f32; 3]),
   // 4D
   Bool4([bool; 4]),
   Int4([i32; 4]),
+  #[serde(deserialize_with = "UInt4::deserialize_override")]
   UInt4([u32; 4]),
   Float4([f32; 4]),
 }
