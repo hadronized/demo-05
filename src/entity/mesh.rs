@@ -1,11 +1,16 @@
 //! Mesh related code.
 
+use crate::{
+  entity::{decoder::Decoder, Entity, EntityEvent},
+  system::{resource::ResourceManager, Publisher},
+};
 use colored::Colorize as _;
 use luminance::{tess::Mode, Semantics, Vertex};
 use std::{
   collections::HashMap,
-  fmt, fs,
+  error, fmt, fs,
   path::{Path, PathBuf},
+  sync::Arc,
 };
 use wavefront_obj::obj;
 
@@ -246,6 +251,50 @@ impl fmt::Display for MeshLoadingError {
       MeshLoadingError::UnsupportedPrimitiveMode => write!(f, "unsupported primitive mode"),
 
       MeshLoadingError::MissingVertexNormal => write!(f, "a vertex is missing its normal"),
+    }
+  }
+}
+
+impl error::Error for MeshLoadingError {}
+
+/// The OBJ encoding format.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct OBJDecoder;
+
+impl Decoder for OBJDecoder {
+  const EXT: &'static str = "obj";
+
+  const SUB_EXT: &'static str = "";
+
+  type Err = MeshLoadingError;
+
+  fn load_from_file(
+    resources: &mut ResourceManager<Entity>,
+    publisher: &mut impl Publisher<EntityEvent>,
+    path: impl AsRef<Path>,
+  ) -> Result<(), Self::Err> {
+    let path = path.as_ref();
+
+    match Mesh::load_from_path(path) {
+      Ok(mesh) => {
+        let path_name = path.display().to_string();
+        let path = path_name.purple().italic();
+        let mesh = Entity::Mesh(Arc::new(mesh));
+        let handle = resources.wrap(mesh.clone(), path_name);
+
+        log::debug!("assigned {} handle {}", path, handle);
+        log::info!("{} mesh {} at {}", "loaded".green().bold(), handle, path);
+
+        let event = EntityEvent::Loaded {
+          handle,
+          entity: mesh,
+        };
+        publisher.publish(event);
+
+        Ok(())
+      }
+
+      Err(err) => Err(err),
     }
   }
 }

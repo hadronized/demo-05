@@ -9,9 +9,10 @@
 //!   behavior of the parameter as a function of time. Those parameters implement different kind of animation
 //!   parameters, depending on your need (constant, linear, cosine, Bézier, etc.).
 
+use crate::entity::{decoder::Decoder, Entity, EntityEvent};
 use colored::Colorize as _;
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{collections::HashMap, error, fmt, fs, io, path::Path};
+use std::{collections::HashMap, error, fmt, fs, io, path::Path, sync::Arc};
 
 #[derive(Debug)]
 pub enum ParameterError {
@@ -69,6 +70,46 @@ impl Parameter {
       Err(ParameterError::NoData)
     } else {
       Ok(parameters)
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct ParameterDecoder;
+
+impl Decoder for ParameterDecoder {
+  const EXT: &'static str = "json";
+
+  const SUB_EXT: &'static str = "param";
+
+  type Err = ParameterError;
+
+  fn load_from_file(
+    resources: &mut crate::system::resource::ResourceManager<super::Entity>,
+    publisher: &mut impl crate::system::Publisher<super::EntityEvent>,
+    path: impl AsRef<Path>,
+  ) -> Result<(), Self::Err> {
+    let path = path.as_ref();
+
+    match Parameter::load_from_file(path) {
+      Ok(params) => {
+        let path = path.display().to_string().purple().italic();
+        log::info!("{} parameters at {}", "loaded".green().bold(), path);
+
+        // check each parameter and create handle if not already existing; update otherwise
+        for (name, param) in params {
+          log::debug!("  found parameter {}: {:?}", name.purple().italic(), param);
+          let entity = Entity::Parameter(Arc::new(param));
+          let handle = resources.wrap(entity.clone(), name);
+
+          let event = EntityEvent::Loaded { handle, entity };
+          publisher.publish(event);
+        }
+
+        Ok(())
+      }
+
+      Err(err) => Err(err),
     }
   }
 }

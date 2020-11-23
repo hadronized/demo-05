@@ -109,8 +109,6 @@ impl GraphicsSystem {
 
   /// React an entity.
   fn accept_entity(&mut self, handle: Handle<Entity>, entity: Entity) {
-    log::debug!("accepting entity {}", handle);
-
     match entity {
       Entity::Mesh(mesh) => self.accept_mesh(handle, mesh),
       _ => (),

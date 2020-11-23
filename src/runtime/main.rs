@@ -64,7 +64,8 @@ impl System for Runtime {
 
     // entity system
     let entity_uid = self.create_system("entity");
-    let mut entity_system = EntitySystem::new(self.system_addr(), entity_uid, cli.entity_root_path);
+    let mut entity_system: EntitySystem =
+      EntitySystem::new(self.system_addr(), entity_uid, cli.entity_root_path);
     let entity_system_addr = entity_system.system_addr();
 
     // graphics system

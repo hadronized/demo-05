@@ -9,8 +9,6 @@ use colored::Colorize as _;
 use std::{cmp::Ordering, collections::HashMap, fmt, marker::PhantomData};
 
 /// Simple handle systems can talk about.
-///
-/// It should fit most needs.
 #[derive(Debug)]
 pub struct Handle<T> {
   id: u32,
@@ -19,26 +17,13 @@ pub struct Handle<T> {
 
 unsafe impl<T> Send for Handle<T> {}
 
-impl<T> Handle<T> {
-  fn copy(&self) -> Self {
-    Handle {
-      id: self.id,
-      _phantom: PhantomData,
-    }
-  }
-}
-
 impl<T> Copy for Handle<T> {}
 
 impl<T> Clone for Handle<T> {
   fn clone(&self) -> Self {
-    Handle {
-      id: self.id,
-      _phantom: PhantomData,
-    }
+    *self
   }
 }
-
 impl<T> Eq for Handle<T> {}
 
 impl<T> Ord for Handle<T> {
@@ -125,7 +110,7 @@ impl<T> ResourceManager<T> {
           handle.to_string().green().bold()
         );
 
-        let _ = self.resources.insert(handle.copy(), resource);
+        let _ = self.resources.insert(handle, resource);
         let _ = self.translations.insert(name, handle.clone());
 
         handle
@@ -138,6 +123,34 @@ impl<T> ResourceManager<T> {
   /// This function allows to check whether a resource is already registered and eventually modify it.
   pub fn ask(&self, name: impl AsRef<str>) -> Option<Handle<T>> {
     self.translations.get(name.as_ref()).copied()
+  }
+
+  /// Reserve a handle for a resource.
+  ///
+  /// This function will return a handle for a resource name, even if the resource is yet to be inserted. In that last
+  /// case, a [`Handle`] is reserved for this name.
+  ///
+  /// > Note: if the resource is already inserted, this function is akin to [`ResourceManager::ask`].
+  pub fn reserve(&mut self, name: impl AsRef<str>) -> Handle<T> {
+    let name = name.as_ref();
+
+    match self.ask(name) {
+      Some(handle) => handle,
+      None => {
+        let handle = self.gen_handle();
+        let name = name.to_owned();
+
+        log::debug!(
+          "reserving handle {} for resource {}",
+          handle.to_string().green().bold(),
+          name.blue().bold(),
+        );
+
+        let _ = self.translations.insert(name, handle.clone());
+
+        handle
+      }
+    }
   }
 
   /// Lookup the resource referred to by the input handle.

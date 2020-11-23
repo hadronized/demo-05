@@ -3,15 +3,20 @@
 //! This system is responsible in loading, streaming and watching assets, also known as _entities_. Entities are
 //! independent objects identified by a unique identifier.
 
+pub mod decoder;
+pub mod default_decoders;
+pub mod material;
 pub mod mesh;
 pub mod parameter;
 
+use self::parameter::Parameter;
 use crate::{
+  entity::decoder::HasDecoder,
   proto::Kill,
   runtime::RuntimeMsg,
-  system::resource::Handle,
   system::{
-    resource::ResourceManager, system_init, Addr, MsgQueue, Publisher, Recipient, System, SystemUID,
+    resource::Handle, resource::ResourceManager, system_init, Addr, MsgQueue, Publisher, Recipient,
+    System, SystemUID,
   },
 };
 use colored::Colorize as _;
@@ -19,6 +24,7 @@ use mesh::Mesh;
 use std::{
   ffi::OsStr,
   fs::read_dir,
+  marker::PhantomData,
   path::{Path, PathBuf},
   sync::Arc,
   thread,
@@ -30,7 +36,7 @@ pub enum Entity {
   /// A [`Mesh`].
   Mesh(Arc<Mesh>),
   /// A [`Parameter`].
-  Parameter(self::parameter::Parameter),
+  Parameter(Arc<Parameter>),
 }
 
 #[derive(Clone, Debug)]
@@ -56,7 +62,7 @@ pub enum EntityEvent {
 }
 
 /// The [`Entity`] system.
-pub struct EntitySystem {
+pub struct EntitySystem<Decoders = default_decoders::Decoders> {
   uid: SystemUID,
   runtime_addr: Addr<RuntimeMsg>,
   /// Directory where all scarce resources this entity system knows about live in.
@@ -64,10 +70,14 @@ pub struct EntitySystem {
   resources: ResourceManager<Entity>,
   addr: Addr<EntityMsg>,
   msg_queue: MsgQueue<EntityMsg>,
-  subscribers: Vec<Box<dyn Recipient<EntityEvent>>>,
+  publisher: EntityPublisher,
+  _phantom: PhantomData<Decoders>,
 }
 
-impl EntitySystem {
+impl<Decoders> EntitySystem<Decoders>
+where
+  Decoders: HasDecoder,
+{
   /// Create a new [`EntitySystem`].
   pub fn new(runtime_addr: Addr<RuntimeMsg>, uid: SystemUID, root_dir: impl AsRef<Path>) -> Self {
     let (addr, msg_queue) = system_init(uid);
@@ -79,7 +89,8 @@ impl EntitySystem {
       resources: ResourceManager::new(),
       addr,
       msg_queue,
-      subscribers: Vec::new(),
+      publisher: EntityPublisher::new(),
+      _phantom: PhantomData,
     }
   }
 
@@ -130,7 +141,8 @@ impl EntitySystem {
         // extract the extension
         match path.extension().and_then(OsStr::to_str) {
           Some(ext) => {
-            self.extension_based_dispatch(ext, &path);
+            let sub_ext = Self::extract_sub_extension(&path).unwrap_or("");
+            self.extension_based_dispatch(ext, sub_ext, &path);
           }
 
           None => {
@@ -145,69 +157,13 @@ impl EntitySystem {
   }
 
   /// Dispatch entity loading based on the extension of a file.
-  fn extension_based_dispatch(&mut self, ext: &str, path: &Path) {
-    match ext {
-      "obj" => self.load_obj(path),
-      "json" => self.dispatch_json(path),
-      _ => log::warn!(
+  fn extension_based_dispatch(&mut self, ext: &str, sub_ext: &str, path: &Path) {
+    if !Decoders::load_from_file(&mut self.resources, &mut self.publisher, ext, sub_ext, path) {
+      log::warn!(
         "unknown extension {} for path {}",
         ext.yellow().italic(),
         path.display().to_string().purple().italic(),
-      ),
-    }
-  }
-
-  /// Load .obj files.
-  fn load_obj(&mut self, path: &Path) {
-    match Mesh::load_from_path(path) {
-      Ok(mesh) => {
-        let path_name = path.display().to_string();
-        let path = path_name.purple().italic();
-        let mesh = Entity::Mesh(Arc::new(mesh));
-        let handle = self.resources.wrap(mesh.clone(), path_name);
-
-        log::debug!("assigned {} handle {}", path, handle);
-        log::info!("{} mesh {} at {}", "loaded".green().bold(), handle, path);
-
-        let event = EntityEvent::Loaded {
-          handle,
-          entity: mesh,
-        };
-        self.publish(event);
-      }
-
-      Err(err) => {
-        log::error!(
-          "cannot load {} {}: {}",
-          "obj".yellow().italic(),
-          path.display().to_string().purple().italic(),
-          err,
-        );
-      }
-    }
-  }
-
-  fn dispatch_json(&mut self, path: &Path) {
-    // extract the “sub” extension, e.g. foo.bar.json’s sub extension is bar.
-    match Self::extract_sub_extension(path) {
-      Some(sub_ext) => match sub_ext {
-        "param" => self.load_parameters(path),
-
-        _ => {
-          log::warn!(
-            "unknown JSON {} resource for {}",
-            sub_ext.yellow().italic(),
-            path.display().to_string().purple().italic()
-          );
-        }
-      },
-
-      None => {
-        log::warn!(
-          "cannot load JSON file {} because it doesn’t have a sub extension",
-          path.display().to_string().purple().italic()
-        );
-      }
+      );
     }
   }
 
@@ -224,33 +180,12 @@ impl EntitySystem {
       }
     })
   }
-
-  fn load_parameters(&mut self, path: &Path) {
-    match self::parameter::Parameter::load_from_file(path) {
-      Ok(params) => {
-        let path = path.display().to_string().purple().italic();
-        log::info!("{} parameters at {}", "loaded".green().bold(), path);
-
-        // check each parameter and create handle if not already existing; update otherwise
-        for (name, param) in params {
-          log::debug!("  found parameter {}: {:?}", name.purple().italic(), param);
-          self.resources.wrap(Entity::Parameter(param), name);
-        }
-      }
-
-      Err(err) => {
-        log::error!(
-          "cannot load {} {}: {}",
-          "parameters".yellow().italic(),
-          path.display().to_string().purple().italic(),
-          err,
-        );
-      }
-    }
-  }
 }
 
-impl System for EntitySystem {
+impl<Decoders> System for EntitySystem<Decoders>
+where
+  Decoders: 'static + Send + HasDecoder,
+{
   type Addr = Addr<EntityMsg>;
 
   fn system_addr(&self) -> Addr<EntityMsg> {
@@ -265,7 +200,30 @@ impl System for EntitySystem {
   }
 }
 
-impl Publisher<EntityEvent> for EntitySystem {
+impl<Decoders> Publisher<EntityEvent> for EntitySystem<Decoders> {
+  fn subscribe(&mut self, subscriber: impl Recipient<EntityEvent> + 'static) {
+    self.publisher.subscribe(subscriber)
+  }
+
+  fn publish(&self, event: EntityEvent) {
+    self.publisher.publish(event)
+  }
+}
+
+/// Publisher of [`EntityEvent`].
+pub struct EntityPublisher {
+  subscribers: Vec<Box<dyn Recipient<EntityEvent>>>,
+}
+
+impl EntityPublisher {
+  fn new() -> Self {
+    Self {
+      subscribers: Vec::new(),
+    }
+  }
+}
+
+impl Publisher<EntityEvent> for EntityPublisher {
   fn subscribe(&mut self, subscriber: impl Recipient<EntityEvent> + 'static) {
     self.subscribers.push(Box::new(subscriber));
   }
