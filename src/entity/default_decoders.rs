@@ -1,5 +1,5 @@
 //! Default decoders.
 
-use crate::entity::{decoder::Tuple, mesh::OBJDecoder, parameter::ParameterDecoder};
+use crate::entity::{mesh::OBJDecoder, parameter::ParameterDecoder};
 
-pub type Decoders = Tuple<OBJDecoder, ParameterDecoder>;
+pub type Decoders = (OBJDecoder, ParameterDecoder);

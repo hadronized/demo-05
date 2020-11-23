@@ -28,12 +28,6 @@ pub trait Decoder: Sized {
   ) -> Result<(), Self::Err>;
 }
 
-/// Type-level tuple of decoders.
-#[derive(Debug)]
-pub struct Tuple<A, B> {
-  _phantom: PhantomData<(A, B)>,
-}
-
 /// Type that contains decoders.
 pub trait HasDecoder {
   fn load_from_file(
@@ -74,7 +68,7 @@ where
   }
 }
 
-impl<A, B> HasDecoder for Tuple<A, B>
+impl<A, B> HasDecoder for (A, B)
 where
   A: HasDecoder,
   B: HasDecoder,
