@@ -68,23 +68,36 @@ where
   }
 }
 
-impl<A, B> HasDecoder for (A, B)
-where
-  A: HasDecoder,
-  B: HasDecoder,
-{
-  fn load_from_file(
-    resources: &mut ResourceManager<Entity>,
-    publisher: &mut impl Publisher<EntityEvent>,
-    ext: impl AsRef<str>,
-    sub_ext: impl AsRef<str>,
-    path: impl AsRef<Path>,
-  ) -> bool {
-    let ext = ext.as_ref();
-    let sub_ext = sub_ext.as_ref();
-    let path = path.as_ref();
+macro_rules! impl_has_decoder_tuples {
+  ($t:tt) => {};
 
-    A::load_from_file(resources, publisher, ext, sub_ext, path)
-      || B::load_from_file(resources, publisher, ext, sub_ext, path)
+  ($first:tt , $($t:tt),*) => {
+    impl_has_decoder_tuple!($first, $($t),*);
+    impl_has_decoder_tuples!($($t),*);
+  };
+}
+
+macro_rules! impl_has_decoder_tuple {
+  ($($t:tt),*) => {
+    impl<$($t),*> HasDecoder for ( $($t),* )
+    where
+      $($t: HasDecoder),*
+    {
+      fn load_from_file(
+        resources: &mut ResourceManager<Entity>,
+        publisher: &mut impl Publisher<EntityEvent>,
+        ext: impl AsRef<str>,
+        sub_ext: impl AsRef<str>,
+        path: impl AsRef<Path>,
+      ) -> bool {
+        let ext = ext.as_ref();
+        let sub_ext = sub_ext.as_ref();
+        let path = path.as_ref();
+
+        $( $t::load_from_file(resources, publisher, ext, sub_ext, path) || )* false
+      }
+    }
   }
 }
+
+impl_has_decoder_tuples!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V);
