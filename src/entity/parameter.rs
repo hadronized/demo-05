@@ -167,102 +167,36 @@ pub enum Constant {
   Float4([f32; 4]),
 }
 
+macro_rules! impl_from_for_constant {
+  ($t:ty, $v:tt) => {
+    impl From<$t> for Constant {
+      fn from(a: $t) -> Self {
+        Self::$v(a)
+      }
+    }
+  };
+}
+
 // 1D
-impl From<bool> for Constant {
-  fn from(a: bool) -> Self {
-    Self::Bool(a)
-  }
-}
-
-impl From<i32> for Constant {
-  fn from(a: i32) -> Self {
-    Self::Int(a)
-  }
-}
-
-impl From<u32> for Constant {
-  fn from(a: u32) -> Self {
-    Self::UInt(a)
-  }
-}
-
-impl From<f32> for Constant {
-  fn from(a: f32) -> Self {
-    Self::Float(a)
-  }
-}
+impl_from_for_constant!(bool, Bool);
+impl_from_for_constant!(i32, Int);
+impl_from_for_constant!(u32, UInt);
+impl_from_for_constant!(f32, Float);
 
 // 2D
-impl From<[bool; 2]> for Constant {
-  fn from(a: [bool; 2]) -> Self {
-    Self::Bool2(a)
-  }
-}
-
-impl From<[i32; 2]> for Constant {
-  fn from(a: [i32; 2]) -> Self {
-    Self::Int2(a)
-  }
-}
-
-impl From<[u32; 2]> for Constant {
-  fn from(a: [u32; 2]) -> Self {
-    Self::UInt2(a)
-  }
-}
-
-impl From<[f32; 2]> for Constant {
-  fn from(a: [f32; 2]) -> Self {
-    Self::Float2(a)
-  }
-}
+impl_from_for_constant!([bool; 2], Bool2);
+impl_from_for_constant!([i32; 2], Int2);
+impl_from_for_constant!([u32; 2], UInt2);
+impl_from_for_constant!([f32; 2], Float2);
 
 // 3D
-impl From<[bool; 3]> for Constant {
-  fn from(a: [bool; 3]) -> Self {
-    Self::Bool3(a)
-  }
-}
-
-impl From<[i32; 3]> for Constant {
-  fn from(a: [i32; 3]) -> Self {
-    Self::Int3(a)
-  }
-}
-
-impl From<[u32; 3]> for Constant {
-  fn from(a: [u32; 3]) -> Self {
-    Self::UInt3(a)
-  }
-}
-
-impl From<[f32; 3]> for Constant {
-  fn from(a: [f32; 3]) -> Self {
-    Self::Float3(a)
-  }
-}
+impl_from_for_constant!([bool; 3], Bool3);
+impl_from_for_constant!([i32; 3], Int3);
+impl_from_for_constant!([u32; 3], UInt3);
+impl_from_for_constant!([f32; 3], Float3);
 
 // 4D
-impl From<[bool; 4]> for Constant {
-  fn from(a: [bool; 4]) -> Self {
-    Self::Bool4(a)
-  }
-}
-
-impl From<[i32; 4]> for Constant {
-  fn from(a: [i32; 4]) -> Self {
-    Self::Int4(a)
-  }
-}
-
-impl From<[u32; 4]> for Constant {
-  fn from(a: [u32; 4]) -> Self {
-    Self::UInt4(a)
-  }
-}
-
-impl From<[f32; 4]> for Constant {
-  fn from(a: [f32; 4]) -> Self {
-    Self::Float4(a)
-  }
-}
+impl_from_for_constant!([bool; 4], Bool4);
+impl_from_for_constant!([i32; 4], Int4);
+impl_from_for_constant!([u32; 4], UInt4);
+impl_from_for_constant!([f32; 4], Float4);
