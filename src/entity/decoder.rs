@@ -2,16 +2,10 @@
 
 use crate::{
   entity::{Entity, EntityEvent},
-  system::{
-    resource::{Handle, ResourceManager},
-    Publisher,
-  },
+  system::{resource::ResourceManager, Publisher},
 };
 use colored::Colorize as _;
-use std::{
-  collections::HashMap, collections::HashSet, error::Error, marker::PhantomData, path::Path,
-  path::PathBuf,
-};
+use std::{collections::HashSet, error::Error, path::Path, path::PathBuf};
 
 /// Resource decoder.
 pub trait Decoder: Sized {
@@ -49,7 +43,7 @@ impl DecodingMetadata {
 
   /// Add a dependency.
   ///
-  /// If the dependency was not already present, returns `true`, `false otherwise`.
+  /// If the dependency was not already present, return `true`, `false otherwise`.
   pub fn add_dep(&mut self, path: impl Into<PathBuf>) -> bool {
     self.path_deps.insert(path.into())
   }

@@ -67,9 +67,9 @@ pub struct ResourceManager<T> {
   resources: HashMap<Handle<T>, T>,
   translations: HashMap<String, Handle<T>>,
 
-  /// Monitored paths.
+  /// Reversed dependency paths <=> resources.
   ///
-  /// For a given path, a [`Handle`] is associated with, corresponding to the resource that needs to handle that path.
+  /// Associate a [`Handle`] — corresponding to the resource responsible for handling that path — to a given path.
   /// This will be used to reload / tell the resource this path has changed.
   path_deps_mappings: HashMap<PathBuf, Handle<T>>,
 }

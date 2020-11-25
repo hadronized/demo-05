@@ -1,16 +1,13 @@
 //! Mesh related code.
 
 use crate::{
-  entity::{
-    decoder::{Decoder, DecodingMetadata},
-    Entity, EntityEvent,
-  },
+  entity::{decoder::Decoder, Entity, EntityEvent},
   system::{resource::ResourceManager, Publisher},
 };
 use colored::Colorize as _;
 use luminance::{tess::Mode, Semantics, Vertex};
 use std::{
-  collections::{HashMap, HashSet},
+  collections::HashMap,
   error, fmt, fs,
   path::{Path, PathBuf},
   sync::Arc,
