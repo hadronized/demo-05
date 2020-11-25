@@ -5,8 +5,9 @@
 //! that doesn’t leak the internal representation of the resource. Each handle is unique on the whole graph of
 //! system, which allows them to know which handle references which local / stateful resources they are handling.
 
+use crate::entity::decoder::DecodingMetadata;
 use colored::Colorize as _;
-use std::{cmp::Ordering, collections::HashMap, fmt, marker::PhantomData};
+use std::{cmp::Ordering, collections::HashMap, fmt, marker::PhantomData, path::PathBuf};
 
 /// Simple handle systems can talk about.
 #[derive(Debug)]
@@ -65,6 +66,12 @@ pub struct ResourceManager<T> {
   next_handle: Handle<T>,
   resources: HashMap<Handle<T>, T>,
   translations: HashMap<String, Handle<T>>,
+
+  /// Monitored paths.
+  ///
+  /// For a given path, a [`Handle`] is associated with, corresponding to the resource that needs to handle that path.
+  /// This will be used to reload / tell the resource this path has changed.
+  path_deps_mappings: HashMap<PathBuf, Handle<T>>,
 }
 
 impl<T> ResourceManager<T> {
@@ -77,6 +84,7 @@ impl<T> ResourceManager<T> {
       },
       resources: HashMap::new(),
       translations: HashMap::new(),
+      path_deps_mappings: HashMap::new(),
     }
   }
 
@@ -84,36 +92,73 @@ impl<T> ResourceManager<T> {
   ///
   /// The `name` parameter refers to the identifier external systems might give to this resource. You cannot use it to
   /// ask this resource back, but you can get a [`Handle`] from an identifier later. See the [`ResourceManager::translate`] method for further information.
-  pub fn wrap(&mut self, resource: T, name: impl AsRef<str>) -> Handle<T> {
+  pub fn wrap(
+    &mut self,
+    resource: T,
+    name: impl AsRef<str>,
+    decoding_metadata: impl Into<Option<DecodingMetadata>>,
+  ) -> Handle<T> {
     let name = name.as_ref();
 
-    match self.ask(name) {
+    let handle = match self.ask(name) {
       Some(handle) => {
-        // the resource already exists; let’s just replace it
-        log::debug!(
-          "replacing resource {} {}",
-          name.blue().bold(),
-          handle.to_string().green().bold()
-        );
-        self.resources.insert(handle, resource);
-
+        self.wrap_replace(handle, name, resource);
         handle
       }
 
-      None => {
-        // this is the first time we see this resource; wrap it up
-        let handle = self.gen_handle();
-        let name = name.to_owned();
+      None => self.wrap_create(name, resource),
+    };
+
+    // if we have metadata, inspect and inject them
+    if let Some(dmd) = decoding_metadata.into() {
+      self.register_decoding_metadata(handle, dmd);
+    }
+
+    handle
+  }
+
+  fn wrap_replace(&mut self, handle: Handle<T>, name: &str, resource: T) {
+    // the resource already exists; let’s just replace it
+    log::debug!(
+      "replacing resource {} which handle is {}",
+      name.blue().bold(),
+      handle.to_string().green().bold()
+    );
+    self.resources.insert(handle, resource);
+  }
+
+  fn wrap_create(&mut self, name: &str, resource: T) -> Handle<T> {
+    // this is the first time we see this resource; wrap it up
+    let handle = self.gen_handle();
+    log::debug!(
+      "wrapping resource {} with handle {}",
+      name.blue().bold(),
+      handle.to_string().green().bold()
+    );
+
+    let _ = self.resources.insert(handle, resource);
+    let _ = self.translations.insert(name.to_owned(), handle.clone());
+
+    handle
+  }
+
+  fn register_decoding_metadata(&mut self, handle: Handle<T>, decoding_metadata: DecodingMetadata) {
+    for path in decoding_metadata.path_deps {
+      let ancient_handle = self.path_deps_mappings.insert(path.clone(), handle);
+
+      if let Some(ancient_handle) = ancient_handle {
         log::debug!(
-          "wrapping resource {} with handle {}",
-          name.blue().bold(),
-          handle.to_string().green().bold()
+          "changed owner from {} to {} for path dependency {}",
+          ancient_handle,
+          handle,
+          path.display().to_string().purple().italic()
         );
-
-        let _ = self.resources.insert(handle, resource);
-        let _ = self.translations.insert(name, handle.clone());
-
-        handle
+      } else {
+        log::debug!(
+          "registered owner {} for path dependency {}",
+          handle,
+          path.display().to_string().purple().italic()
+        );
       }
     }
   }

@@ -2,10 +2,16 @@
 
 use crate::{
   entity::{Entity, EntityEvent},
-  system::{resource::ResourceManager, Publisher},
+  system::{
+    resource::{Handle, ResourceManager},
+    Publisher,
+  },
 };
 use colored::Colorize as _;
-use std::{error::Error, marker::PhantomData, path::Path};
+use std::{
+  collections::HashMap, collections::HashSet, error::Error, marker::PhantomData, path::Path,
+  path::PathBuf,
+};
 
 /// Resource decoder.
 pub trait Decoder: Sized {
@@ -26,6 +32,38 @@ pub trait Decoder: Sized {
     publisher: &mut impl Publisher<EntityEvent>,
     path: impl AsRef<Path>,
   ) -> Result<(), Self::Err>;
+}
+
+/// Information passed around after decoding to trace dependencies and other kind of data.
+#[derive(Debug)]
+pub struct DecodingMetadata {
+  pub path_deps: HashSet<PathBuf>,
+}
+
+impl DecodingMetadata {
+  pub fn new() -> Self {
+    Self {
+      path_deps: HashSet::new(),
+    }
+  }
+
+  /// Add a dependency.
+  ///
+  /// If the dependency was not already present, returns `true`, `false otherwise`.
+  pub fn add_dep(&mut self, path: impl Into<PathBuf>) -> bool {
+    self.path_deps.insert(path.into())
+  }
+
+  /// Shortcut to create a [`DecodingMetadata`] containing dependencies for only one resource.
+  pub fn with_deps(paths: impl IntoIterator<Item = PathBuf>) -> Self {
+    let mut dmd = Self::new();
+
+    for path in paths {
+      let _ = dmd.add_dep(path);
+    }
+
+    dmd
+  }
 }
 
 /// Type that contains decoders.

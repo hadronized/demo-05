@@ -1,13 +1,16 @@
 //! Mesh related code.
 
 use crate::{
-  entity::{decoder::Decoder, Entity, EntityEvent},
+  entity::{
+    decoder::{Decoder, DecodingMetadata},
+    Entity, EntityEvent,
+  },
   system::{resource::ResourceManager, Publisher},
 };
 use colored::Colorize as _;
 use luminance::{tess::Mode, Semantics, Vertex};
 use std::{
-  collections::HashMap,
+  collections::{HashMap, HashSet},
   error, fmt, fs,
   path::{Path, PathBuf},
   sync::Arc,
@@ -280,7 +283,7 @@ impl Decoder for OBJDecoder {
         let path_name = path.display().to_string();
         let path = path_name.purple().italic();
         let mesh = Entity::Mesh(Arc::new(mesh));
-        let handle = resources.wrap(mesh.clone(), path_name);
+        let handle = resources.wrap(mesh.clone(), path_name, None);
 
         log::debug!("assigned {} handle {}", path, handle);
         log::info!("{} mesh {} at {}", "loaded".green().bold(), handle, path);
