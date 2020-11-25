@@ -9,7 +9,10 @@
 //!   behavior of the parameter as a function of time. Those parameters implement different kind of animation
 //!   parameters, depending on your need (constant, linear, cosine, Bézier, etc.).
 
-use crate::entity::{decoder::Decoder, Entity, EntityEvent};
+use crate::entity::{
+  decoder::{Decoder, DecodingMetadata},
+  Entity, EntityEvent,
+};
 use colored::Colorize as _;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{collections::HashMap, error, fmt, fs, io, path::Path, sync::Arc};
@@ -100,7 +103,7 @@ impl Decoder for ParameterDecoder {
         for (name, param) in params {
           log::debug!("  found parameter {}: {:?}", name.purple().italic(), param);
           let entity = Entity::Parameter(Arc::new(param));
-          let handle = resources.wrap(entity.clone(), name);
+          let handle = resources.wrap(entity.clone(), name, None);
 
           let event = EntityEvent::Loaded { handle, entity };
           publisher.publish(event);

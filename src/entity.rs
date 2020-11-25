@@ -159,11 +159,20 @@ where
   /// Dispatch entity loading based on the extension of a file.
   fn extension_based_dispatch(&mut self, ext: &str, sub_ext: &str, path: &Path) {
     if !Decoders::load_from_file(&mut self.resources, &mut self.publisher, ext, sub_ext, path) {
-      log::warn!(
-        "unknown extension {} for path {}",
-        ext.yellow().italic(),
-        path.display().to_string().purple().italic(),
-      );
+      if sub_ext.is_empty() {
+        log::warn!(
+          "unknown extension {} for path {}",
+          ext.yellow().italic(),
+          path.display().to_string().purple().italic(),
+        );
+      } else {
+        log::warn!(
+          "unknown extension {}.{} for path {}",
+          sub_ext.yellow().italic(),
+          ext.yellow().italic(),
+          path.display().to_string().purple().italic(),
+        );
+      }
     }
   }
 
