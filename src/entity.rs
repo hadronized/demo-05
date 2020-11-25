@@ -8,8 +8,9 @@ pub mod default_decoders;
 pub mod material;
 pub mod mesh;
 pub mod parameter;
+pub mod shader;
 
-use self::parameter::Parameter;
+use self::{parameter::Parameter, shader::Shader};
 use crate::{
   entity::decoder::HasDecoder,
   proto::Kill,
@@ -37,6 +38,8 @@ pub enum Entity {
   Mesh(Arc<Mesh>),
   /// A [`Parameter`].
   Parameter(Arc<Parameter>),
+  /// A [`Shader`].
+  Shader(Arc<Shader>),
 }
 
 #[derive(Clone, Debug)]
