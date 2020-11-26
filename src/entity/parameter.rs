@@ -9,10 +9,7 @@
 //!   behavior of the parameter as a function of time. Those parameters implement different kind of animation
 //!   parameters, depending on your need (constant, linear, cosine, Bézier, etc.).
 
-use crate::entity::{
-  decoder::{Decoder, DecodingMetadata},
-  Entity, EntityEvent,
-};
+use crate::entity::{decoder::Decoder, Entity, EntityEvent};
 use colored::Colorize as _;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{collections::HashMap, error, fmt, fs, io, path::Path, sync::Arc};
