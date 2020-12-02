@@ -8,17 +8,35 @@ use crate::{
   system::{resource::ResourceManager, Publisher},
 };
 use colored::Colorize as _;
+use glsl::{parser::Parse as _, parser::ParseError, syntax::ShaderStage};
 use serde::{Deserialize, Serialize};
 use std::{error, fmt, fs, io, path::Path, path::PathBuf, sync::Arc};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Shader {
   name: String,
-  vert_shader: String,
-  tess_ctrl_shader: String,
-  tess_eval_shader: String,
-  geo_shader: String,
-  frag_shader: String,
+  vert_shader: ShaderData,
+  tess_ctrl_shader: Option<ShaderData>,
+  tess_eval_shader: Option<ShaderData>,
+  geo_shader: Option<ShaderData>,
+  frag_shader: ShaderData,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ShaderData {
+  /// The raw GLSL string.
+  raw: String,
+  /// Parsed GLSL AST.
+  ast: ShaderStage,
+}
+
+impl ShaderData {
+  pub fn new(raw: impl Into<String>, ast: ShaderStage) -> Self {
+    Self {
+      raw: raw.into(),
+      ast,
+    }
+  }
 }
 
 /// Paths for each shader stages.
@@ -46,6 +64,7 @@ impl Shader {
     path: impl AsRef<Path>,
   ) -> Result<(Self, ShaderInfo), ShaderError> {
     let path = path.as_ref();
+    let parent = path.parent().unwrap_or(path);
 
     log::debug!(
       "loading {} {}",
@@ -57,51 +76,55 @@ impl Shader {
     let shader_info: ShaderInfo = serde_json::from_str(&content)?;
 
     // vertex shader
-    let vert_shader;
-    if shader_info.vert_shader.is_file() {
-      vert_shader =
-        fs::read_to_string(resources.resource_to_relative_path(path, &shader_info.vert_shader))?;
+    let vert_path = resources.resource_to_relative_path(parent, &shader_info.vert_shader);
+    let vert_shader = if vert_path.is_file() {
+      let src = fs::read_to_string(&vert_path)?;
+      let ast = ShaderStage::parse(&src)?;
+      ShaderData::new(src, ast)
     } else {
-      vert_shader = String::new();
-    }
+      return Err(ShaderError::MissingVertexShader(vert_path));
+    };
 
     // tessellation control shader
-    let tess_ctrl_shader;
-    if shader_info.tess_ctrl_shader.is_file() {
-      tess_ctrl_shader = fs::read_to_string(
-        resources.resource_to_relative_path(path, &shader_info.tess_ctrl_shader),
-      )?;
+    let tess_ctrl_path = resources.resource_to_relative_path(parent, &shader_info.tess_ctrl_shader);
+    let tess_ctrl_shader = if tess_ctrl_path.is_file() {
+      let src = fs::read_to_string(tess_ctrl_path)?;
+      let ast = ShaderStage::parse(&src)?;
+
+      Some(ShaderData::new(src, ast))
     } else {
-      tess_ctrl_shader = String::new();
-    }
+      None
+    };
 
     // tessellation evaluation shader
-    let tess_eval_shader;
-    if shader_info.tess_eval_shader.is_file() {
-      tess_eval_shader = fs::read_to_string(
-        resources.resource_to_relative_path(path, &shader_info.tess_eval_shader),
-      )?;
+    let tess_eval_path = resources.resource_to_relative_path(parent, &shader_info.tess_eval_shader);
+    let tess_eval_shader = if tess_eval_path.is_file() {
+      let src = fs::read_to_string(tess_eval_path)?;
+      let ast = ShaderStage::parse(&src)?;
+      Some(ShaderData::new(src, ast))
     } else {
-      tess_eval_shader = String::new();
-    }
+      None
+    };
 
     // geometry shader
-    let geo_shader;
-    if shader_info.geo_shader.is_file() {
-      geo_shader =
-        fs::read_to_string(resources.resource_to_relative_path(path, &shader_info.geo_shader))?;
+    let geo_path = resources.resource_to_relative_path(parent, &shader_info.geo_shader);
+    let geo_shader = if geo_path.is_file() {
+      let src = fs::read_to_string(geo_path)?;
+      let ast = ShaderStage::parse(&src)?;
+      Some(ShaderData::new(src, ast))
     } else {
-      geo_shader = String::new();
-    }
+      None
+    };
 
     // fragment shader
-    let frag_shader;
-    if shader_info.frag_shader.is_file() {
-      frag_shader =
-        fs::read_to_string(resources.resource_to_relative_path(path, &shader_info.frag_shader))?;
+    let frag_path = resources.resource_to_relative_path(parent, &shader_info.frag_shader);
+    let frag_shader = if frag_path.is_file() {
+      let src = fs::read_to_string(&frag_path)?;
+      let ast = ShaderStage::parse(&src)?;
+      ShaderData::new(src, ast)
     } else {
-      frag_shader = String::new();
-    }
+      return Err(ShaderError::MissingFragmentShader(frag_path));
+    };
 
     let shader = Shader {
       name: shader_info.name.clone(),
@@ -120,6 +143,9 @@ impl Shader {
 pub enum ShaderError {
   FileError(io::Error),
   JSONError(serde_json::Error),
+  GLSLError(ParseError),
+  MissingVertexShader(PathBuf),
+  MissingFragmentShader(PathBuf),
 }
 
 impl From<io::Error> for ShaderError {
@@ -134,11 +160,24 @@ impl From<serde_json::Error> for ShaderError {
   }
 }
 
+impl From<ParseError> for ShaderError {
+  fn from(err: ParseError) -> Self {
+    Self::GLSLError(err)
+  }
+}
+
 impl fmt::Display for ShaderError {
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     match *self {
       ShaderError::FileError(ref e) => write!(f, "cannot open file: {}", e),
       ShaderError::JSONError(ref e) => write!(f, "JSON decoding error: {}", e),
+      ShaderError::GLSLError(ref e) => write!(f, "GLSL parsing error: {}", e),
+      ShaderError::MissingVertexShader(ref path) => {
+        write!(f, "missing vertex shader at path {}", path.display())
+      }
+      ShaderError::MissingFragmentShader(ref path) => {
+        write!(f, "missing fragment shader at path {}", path.display())
+      }
     }
   }
 }

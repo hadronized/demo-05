@@ -111,8 +111,9 @@ impl<T> ResourceManager<T> {
         .chain(path.components().into_iter().skip(1))
         .collect()
     } else {
-      prefix
-        .chain(parent.as_ref().components())
+      parent
+        .as_ref()
+        .components()
         .chain(path.components())
         .collect()
     }
