@@ -14,20 +14,20 @@ use std::{error, fmt, fs, io, path::Path, path::PathBuf, sync::Arc};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Shader {
-  name: String,
-  vert_shader: ShaderData,
-  tess_ctrl_shader: Option<ShaderData>,
-  tess_eval_shader: Option<ShaderData>,
-  geo_shader: Option<ShaderData>,
-  frag_shader: ShaderData,
+  pub name: String,
+  pub vert_shader: ShaderData,
+  pub tess_ctrl_shader: Option<ShaderData>,
+  pub tess_eval_shader: Option<ShaderData>,
+  pub geo_shader: Option<ShaderData>,
+  pub frag_shader: ShaderData,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ShaderData {
   /// The raw GLSL string.
-  raw: String,
+  pub raw: String,
   /// Parsed GLSL AST.
-  ast: ShaderStage,
+  pub ast: ShaderStage,
 }
 
 impl ShaderData {
@@ -204,6 +204,8 @@ impl Decoder for JSONShaderDecoder {
     match Shader::load_from_file(resources, path) {
       Ok((shader, info)) => {
         let entity = Entity::Shader(Arc::new(shader));
+
+        // create the dependency tracking
         let mut deps = vec![info.vert_shader, info.frag_shader];
 
         if info.tess_ctrl_shader.is_file() {
@@ -219,6 +221,9 @@ impl Decoder for JSONShaderDecoder {
         }
 
         let handle = resources.wrap(entity.clone(), info.name, DecodingMetadata::with_deps(deps));
+
+        let path = path.display().to_string().purple().italic();
+        log::info!("{} shader {} at {}", "loaded".green().bold(), handle, path);
 
         let event = EntityEvent::Loaded { handle, entity };
         publisher.publish(event);

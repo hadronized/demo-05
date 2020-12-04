@@ -3,8 +3,11 @@
 //! This system is responsible in all the rendering operations.
 
 mod camera;
+mod shader;
 
 use crate::{
+  entity::mesh::VertexSemantics,
+  entity::shader::Shader,
   entity::{
     mesh::{Mesh, MeshIndex, MeshVertex},
     Entity, EntityEvent,
@@ -15,8 +18,8 @@ use crate::{
 };
 use cgmath::{Deg, Rad, Vector3};
 use glfw::{Action, Context as _, Key, MouseButton, WindowEvent};
-use luminance_front::context::GraphicsContext as _;
 use luminance_front::tess::Tess;
+use luminance_front::{context::GraphicsContext as _, shader::BuiltProgram};
 use luminance_glfw::{GlfwSurface, GlfwSurfaceError};
 use luminance_windowing::WindowOpt;
 use std::{collections::HashMap, fmt, sync::Arc};
@@ -111,6 +114,7 @@ impl GraphicsSystem {
   fn accept_entity(&mut self, handle: Handle<Entity>, entity: Entity) {
     match entity {
       Entity::Mesh(mesh) => self.accept_mesh(handle, mesh),
+      Entity::Shader(shader) => self.accept_shader(handle, shader),
       _ => (),
     }
   }
@@ -148,6 +152,34 @@ impl GraphicsSystem {
           handle,
           err
         );
+      }
+    }
+  }
+
+  /// Accept a shader.
+  fn accept_shader(&mut self, handle: Handle<Entity>, shader: Arc<Shader>) {
+    log::info!("accepting shader {}", handle);
+    log::debug!("building GPU shader {}", handle);
+
+    let shader = &*shader;
+
+    // compile the shader
+    let compilation = self
+      .surface
+      .new_shader_program::<VertexSemantics, (), ()>()
+      .from_strings(&shader.vert_shader.raw, None, None, &shader.frag_shader.raw);
+
+    match compilation {
+      Ok(BuiltProgram { program, warnings }) => {
+        for warning in warnings {
+          log::warn!("shader warning: {}", warning);
+        }
+
+        // compute the dynamic uniform interface
+      }
+
+      Err(err) => {
+        log::error!("cannot compile shader {}: {}", handle, err);
       }
     }
   }
