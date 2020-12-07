@@ -2,8 +2,8 @@
 
 use glsl::{
   syntax::{
-    FullySpecifiedType, SingleDeclaration, StorageQualifier, TypeQualifier, TypeQualifierSpec,
-    TypeSpecifier, TypeSpecifierNonArray,
+    FullySpecifiedType, ShaderStage, SingleDeclaration, StorageQualifier, TypeQualifier,
+    TypeQualifierSpec, TypeSpecifier, TypeSpecifierNonArray,
   },
   visitor::{Host as _, Visit, Visitor},
 };
@@ -13,8 +13,6 @@ use luminance_front::{
   Backend,
 };
 use std::collections::HashMap;
-
-use crate::entity::shader::Shader;
 
 /// Dynamic uniform interface for shaders.
 ///
@@ -59,28 +57,36 @@ pub enum DynamicUniform {
   Float4(Uniform<[f32; 4]>),
 }
 
-impl UniformInterface<Backend, Shader> for DynamicUniformInterface {
+#[derive(Debug)]
+pub struct ShaderASTs<'a> {
+  pub vert_ast: &'a ShaderStage,
+  pub tess_ctrl_ast: Option<&'a ShaderStage>,
+  pub tess_eval_ast: Option<&'a ShaderStage>,
+  pub geo_ast: Option<&'a ShaderStage>,
+  pub frag_ast: &'a ShaderStage,
+}
+
+impl<'b> UniformInterface<Backend, ShaderASTs<'b>> for DynamicUniformInterface {
   fn uniform_interface<'a>(
     builder: &mut UniformBuilder<'a, Backend>,
-    shaders: &mut Shader,
+    asts: &mut ShaderASTs<'b>,
   ) -> Result<Self, UniformWarning> {
     // extract the name + type of all uniforms declared in vertex, tessellation, geometry and fragment shader stages by
     // using a GLSL AST visitor
     let mut extractor = ExtractUniforms::new();
 
-    shaders.vert_shader.ast.visit(&mut extractor);
+    asts.vert_ast.visit(&mut extractor);
 
-    if let (Some(ctrl), Some(eval)) = (&mut shaders.tess_ctrl_shader, &mut shaders.tess_eval_shader)
-    {
-      ctrl.ast.visit(&mut extractor);
-      eval.ast.visit(&mut extractor);
+    if let (Some(ctrl), Some(eval)) = (&mut asts.tess_ctrl_ast, &mut asts.tess_eval_ast) {
+      ctrl.visit(&mut extractor);
+      eval.visit(&mut extractor);
     }
 
-    if let Some(ref mut geo) = shaders.geo_shader {
-      geo.ast.visit(&mut extractor);
+    if let Some(ref mut geo) = asts.geo_ast {
+      geo.visit(&mut extractor);
     }
 
-    shaders.frag_shader.ast.visit(&mut extractor);
+    asts.frag_ast.visit(&mut extractor);
 
     Ok(extractor.extract_uniforms(builder))
   }
@@ -135,6 +141,8 @@ impl ExtractUniforms {
           }
         };
 
+        log::trace!("found uniform {} of type {:?}", name, ty);
+
         Some((name, uniform))
       })
       .collect();
@@ -152,7 +160,7 @@ impl ExtractUniforms {
 }
 
 impl Visitor for ExtractUniforms {
-  fn visit_single_declaration(&mut self, sd: &mut SingleDeclaration) -> Visit {
+  fn visit_single_declaration(&mut self, sd: &SingleDeclaration) -> Visit {
     match sd {
       SingleDeclaration {
         ty:

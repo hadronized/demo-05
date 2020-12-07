@@ -6,10 +6,9 @@ mod camera;
 mod shader;
 
 use crate::{
-  entity::mesh::VertexSemantics,
-  entity::shader::Shader,
   entity::{
-    mesh::{Mesh, MeshIndex, MeshVertex},
+    mesh::{Mesh, MeshIndex, MeshVertex, VertexSemantics},
+    shader::Shader,
     Entity, EntityEvent,
   },
   proto::Kill,
@@ -18,10 +17,14 @@ use crate::{
 };
 use cgmath::{Deg, Rad, Vector3};
 use glfw::{Action, Context as _, Key, MouseButton, WindowEvent};
-use luminance_front::tess::Tess;
-use luminance_front::{context::GraphicsContext as _, shader::BuiltProgram};
+use luminance_front::{
+  context::GraphicsContext as _,
+  shader::{BuiltProgram, Program},
+  tess::Tess,
+};
 use luminance_glfw::{GlfwSurface, GlfwSurfaceError};
 use luminance_windowing::WindowOpt;
+use shader::{DynamicUniformInterface, ShaderASTs};
 use std::{collections::HashMap, fmt, sync::Arc};
 
 const TITLE: &str = "Spectra";
@@ -68,7 +71,6 @@ impl fmt::Display for GraphicsSystemError {
   }
 }
 
-#[derive(Debug)]
 pub struct GraphicsSystem {
   uid: SystemUID,
   runtime_addr: Addr<RuntimeMsg>,
@@ -76,6 +78,7 @@ pub struct GraphicsSystem {
   msg_queue: MsgQueue<GraphicsMsg>,
   meshes: HashMap<Handle<Entity>, Tess<MeshVertex, MeshIndex>>,
   camera: camera::FreeflyCamera,
+  shaders: HashMap<Handle<Entity>, Program<VertexSemantics, (), DynamicUniformInterface>>,
   surface: GlfwSurface,
 }
 
@@ -84,6 +87,7 @@ impl Drop for GraphicsSystem {
     // ensure we have removed the GPU objects prior to anything else; de-allocating the surface while GPU objects still
     // exist is currently not supported and yield a bug
     self.meshes.clear();
+    self.shaders.clear();
   }
 }
 
@@ -97,6 +101,7 @@ impl GraphicsSystem {
     let surface = GlfwSurface::new_gl33(TITLE, win_opt)?;
     let meshes = HashMap::new();
     let (w, h) = surface.window.get_framebuffer_size();
+    let shaders = HashMap::new();
     let camera = camera::FreeflyCamera::new(w as f32 / h as f32, Deg(90.), 0.1, 100.);
 
     Ok(Self {
@@ -106,6 +111,7 @@ impl GraphicsSystem {
       msg_queue,
       surface,
       meshes,
+      shaders,
       camera,
     })
   }
@@ -162,12 +168,25 @@ impl GraphicsSystem {
     log::debug!("building GPU shader {}", handle);
 
     let shader = &*shader;
+    let mut asts = ShaderASTs {
+      vert_ast: &shader.vert_shader.ast,
+      tess_ctrl_ast: None,
+      tess_eval_ast: None,
+      geo_ast: None,
+      frag_ast: &shader.frag_shader.ast,
+    };
 
     // compile the shader
     let compilation = self
       .surface
-      .new_shader_program::<VertexSemantics, (), ()>()
-      .from_strings(&shader.vert_shader.raw, None, None, &shader.frag_shader.raw);
+      .new_shader_program::<VertexSemantics, (), DynamicUniformInterface>()
+      .from_strings_env(
+        &shader.vert_shader.raw,
+        None,
+        None,
+        &shader.frag_shader.raw,
+        &mut asts,
+      );
 
     match compilation {
       Ok(BuiltProgram { program, warnings }) => {
@@ -175,7 +194,7 @@ impl GraphicsSystem {
           log::warn!("shader warning: {}", warning);
         }
 
-        // compute the dynamic uniform interface
+        self.shaders.insert(handle, program);
       }
 
       Err(err) => {
