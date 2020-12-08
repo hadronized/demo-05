@@ -1,5 +1,5 @@
 //! Default decoders.
 
-use crate::entity::{mesh::OBJDecoder, parameter::ParameterDecoder};
+use crate::entity::{mesh::OBJDecoder, parameter::ParameterDecoder, shader::JSONShaderDecoder};
 
-pub type Decoders = (OBJDecoder, ParameterDecoder);
+pub type Decoders = (OBJDecoder, ParameterDecoder, JSONShaderDecoder);

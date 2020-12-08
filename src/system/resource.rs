@@ -7,7 +7,9 @@
 
 use crate::entity::decoder::DecodingMetadata;
 use colored::Colorize as _;
-use std::{cmp::Ordering, collections::HashMap, fmt, marker::PhantomData, path::PathBuf};
+use std::{
+  cmp::Ordering, collections::HashMap, fmt, marker::PhantomData, path::Path, path::PathBuf,
+};
 
 /// Simple handle systems can talk about.
 #[derive(Debug)]
@@ -64,6 +66,7 @@ impl<T> fmt::Display for Handle<T> {
 #[derive(Debug)]
 pub struct ResourceManager<T> {
   next_handle: Handle<T>,
+  root_dir: PathBuf,
   resources: HashMap<Handle<T>, T>,
   translations: HashMap<String, Handle<T>>,
 
@@ -76,15 +79,43 @@ pub struct ResourceManager<T> {
 
 impl<T> ResourceManager<T> {
   /// Create a new [`HandleManager`].
-  pub fn new() -> Self {
+  pub fn new(root_dir: impl Into<PathBuf>) -> Self {
     Self {
       next_handle: Handle {
         id: 0,
         _phantom: PhantomData,
       },
+      root_dir: root_dir.into(),
       resources: HashMap::new(),
       translations: HashMap::new(),
       path_deps_mappings: HashMap::new(),
+    }
+  }
+
+  /// Root directory the resource manager is responsible for.
+  pub fn root_dir(&self) -> &Path {
+    &self.root_dir
+  }
+
+  /// Convert a resource path into a relative path.
+  pub fn resource_to_relative_path(
+    &self,
+    parent: impl AsRef<Path>,
+    path: impl AsRef<Path>,
+  ) -> PathBuf {
+    let path = path.as_ref();
+    let prefix = self.root_dir.components().into_iter();
+
+    if path.starts_with("/") {
+      prefix
+        .chain(path.components().into_iter().skip(1))
+        .collect()
+    } else {
+      parent
+        .as_ref()
+        .components()
+        .chain(path.components())
+        .collect()
     }
   }
 
@@ -222,5 +253,25 @@ impl<T> ResourceManager<T> {
       id,
       _phantom: PhantomData,
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn resource_to_relative_path() {
+    let res_mgr = ResourceManager::<String>::new(Path::new("data/foo"));
+
+    assert_eq!(
+      res_mgr.resource_to_relative_path("bar", "test.json"),
+      Path::new("data/foo/bar/test.json")
+    );
+
+    assert_eq!(
+      res_mgr.resource_to_relative_path("bar", "/test.json"),
+      Path::new("data/foo/test.json")
+    );
   }
 }

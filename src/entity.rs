@@ -8,8 +8,9 @@ pub mod default_decoders;
 pub mod material;
 pub mod mesh;
 pub mod parameter;
+pub mod shader;
 
-use self::parameter::Parameter;
+use self::{parameter::Parameter, shader::Shader};
 use crate::{
   entity::decoder::HasDecoder,
   proto::Kill,
@@ -37,6 +38,8 @@ pub enum Entity {
   Mesh(Arc<Mesh>),
   /// A [`Parameter`].
   Parameter(Arc<Parameter>),
+  /// A [`Shader`].
+  Shader(Arc<Shader>),
 }
 
 #[derive(Clone, Debug)]
@@ -79,14 +82,15 @@ where
   Decoders: HasDecoder,
 {
   /// Create a new [`EntitySystem`].
-  pub fn new(runtime_addr: Addr<RuntimeMsg>, uid: SystemUID, root_dir: impl AsRef<Path>) -> Self {
+  pub fn new(runtime_addr: Addr<RuntimeMsg>, uid: SystemUID, root_dir: impl Into<PathBuf>) -> Self {
     let (addr, msg_queue) = system_init(uid);
+    let root_dir = root_dir.into();
 
     Self {
       uid,
       runtime_addr,
-      root_dir: root_dir.as_ref().to_owned(),
-      resources: ResourceManager::new(),
+      root_dir: root_dir.clone(),
+      resources: ResourceManager::new(root_dir),
       addr,
       msg_queue,
       publisher: EntityPublisher::new(),

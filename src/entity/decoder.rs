@@ -88,8 +88,7 @@ where
     if was_active {
       if let Err(err) = <D as Decoder>::load_from_file(resources, publisher, path) {
         log::error!(
-          "cannot load {} {}: {}",
-          "obj".yellow().italic(),
+          "cannot load {}: {}",
           path.display().to_string().purple().italic(),
           err,
         );
