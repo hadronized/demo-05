@@ -1,6 +1,8 @@
 mod cli;
+mod logic;
 
 use colored::Colorize;
+use logic::LogicSystem;
 use luminance_windowing::WindowOpt;
 use spectra::{
   entity::EntitySystem,
@@ -75,6 +77,13 @@ impl System for Runtime {
     let graphics_system_addr = graphics_system.system_addr();
     entity_system.subscribe(graphics_system_addr.clone());
 
+    // logic system
+    let logic_uid = self.create_system("logic");
+    let logic_system = LogicSystem::new(self.system_addr(), logic_uid);
+    let logic_system_addr = logic_system.system_addr();
+
+    logic_system.startup();
+
     // kill everything if we receive SIGINT
     let runtime_system_addr_ctrlc = runtime_system_addr.clone();
     ctrlc::set_handler(move || {
@@ -94,8 +103,10 @@ impl System for Runtime {
         Some(RuntimeMsg::Kill) => {
           let _ = entity_system_addr.send_msg(Kill);
           let _ = graphics_system_addr.send_msg(Kill);
-          // let _ = self.systems.remove(&runtime_uid);
-          runtime_system_addr.send_msg(RuntimeMsg::SystemExit(runtime_uid));
+          let _ = logic_system_addr.send_msg(Kill);
+          runtime_system_addr
+            .send_msg(RuntimeMsg::SystemExit(runtime_uid))
+            .unwrap();
         }
 
         Some(RuntimeMsg::SystemExit(uid)) => {
